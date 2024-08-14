@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /* Copyright (c) 2020 Facebook */
 #include "vmlinux.h"
-#include <linux/bpf.h>
-#include <linux/ptrace.h>
-#include <linux/sched.h>
-#include <linux/bpf_common.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
