@@ -2,6 +2,7 @@
 /* Copyright (c) 2020 Facebook */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <sys/resource.h>
 #include <bpf/libbpf.h>
