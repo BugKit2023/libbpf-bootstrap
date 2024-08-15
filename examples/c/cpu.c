@@ -44,13 +44,17 @@ int main(int argc, char **argv)
 
 	printf("Tracking CPU usage. Press Ctrl+C to stop.\n");
 
-
-
-	for (;;) {
-		/* trigger our BPF program */
-		fprintf(stderr, ".");
-		sleep(1);
-	}
+	_u32 pid = 0, next_pid;
+    _u64 value;
+    while (1) {
+        while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
+            if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &value) == 0) {
+                printf("Process %u used %llu ns of CPU time\n", next_pid, value);
+            }
+            pid = next_pid;
+        }
+        sleep(1);
+    }
 
 cleanup:
 	cpu_bpf__destroy(skel);
