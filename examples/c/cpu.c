@@ -44,9 +44,9 @@ int main(int argc, char **argv)
 
 	printf("Tracking CPU usage. Press Ctrl+C to stop.\n");
 
-	__u32 pid = 0, next_pid;
-    __u64 value;
     while (1) {
+        __u32 pid = 0, next_pid;
+        __u64 value;
         while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
             if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &value) == 0) {
                 printf("Process %u used %llu ns of CPU time\n", next_pid, value);
