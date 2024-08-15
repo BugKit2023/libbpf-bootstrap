@@ -17,8 +17,6 @@ int main(int argc, char **argv)
 {
 	struct cpu_bpf *skel;
 	int err;
-	u32 pid = 0, next_pid;
-    u64 value;
 
 	/* Set up libbpf errors and debug info callback */
 	libbpf_set_print(libbpf_print_fn);
