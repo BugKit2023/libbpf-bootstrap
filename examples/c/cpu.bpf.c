@@ -14,7 +14,7 @@ struct {
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-SEC("kprobe/sched_switch")
+SEC("tracepoint/sched/sched_switch")
 int on_sched_switch(struct pt_regs *ctx) {
     u32 pid = bpf_get_current_pid_tgid() >> 32;
     u64 ts = bpf_ktime_get_ns(); 
