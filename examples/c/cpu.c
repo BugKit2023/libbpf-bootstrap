@@ -8,6 +8,9 @@
 #include <bpf/libbpf.h>
 #include "cpu.skel.h"
 
+#define SEC_TO_NS 1000000000ULL
+#define TIME_WINDOW_SEC 5
+
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
 	return vfprintf(stderr, format, args);
@@ -45,15 +48,19 @@ int main(int argc, char **argv)
 	printf("Tracking CPU usage. Press Ctrl+C to stop.\n");
 
     while (1) {
-        __u32 pid = 0, next_pid;
-        __u64 value;
-        while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
-            if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &value) == 0) {
-                printf("Process %u used %llu ns of CPU time\n", next_pid, value);
-            }
-            pid = next_pid;
-        }
-        sleep(1);
+         __u32 pid = 0, next_pid;
+         __u64 current_value, previous_value;
+
+         while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
+             if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &current_value) == 0) {
+                 __u64 delta_ns = current_value - previous_value;
+                 __u64 delta_mcpu = (delta_ns * 1000) / (TIME_WINDOW_SEC * SEC_TO_NS);
+                 printf("Process %u used %llu mCPU in the last 5 seconds\n", next_pid, delta_mcpu);
+                 previous_value = current_value;
+             }
+             pid = next_pid;
+         }
+         sleep(TIME_WINDOW_SEC);
     }
 
 cleanup:
