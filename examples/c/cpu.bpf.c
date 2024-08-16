@@ -11,6 +11,12 @@ struct {
     __type(key, u32);   
     __type(value, u64);
 } cpu_times SEC(".maps");
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, u32);
+    __type(value, u64);
+} last_update SEC(".maps");
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -29,7 +35,6 @@ int on_sched_switch(struct pt_regs *ctx) {
         bpf_map_update_elem(&cpu_times, &pid, &updated_time, BPF_ANY);
         bpf_map_update_elem(&last_update, &pid, &ts, BPF_ANY);
     } else {
-        // Инициализация первого значения
         bpf_map_update_elem(&last_update, &pid, &ts, BPF_ANY);
         u64 initial_cpu_time = 0;
         bpf_map_update_elem(&cpu_times, &pid, &initial_cpu_time, BPF_ANY);
