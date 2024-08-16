@@ -21,7 +21,7 @@ struct {
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/sched/sched_switch")
-int on_sched_switch(struct pt_regs *ctx) {
+int on_sched_switch(struct trace_event_raw_sched_switch *ctx) {
     u32 pid_prev = ctx->prev_pid;
     u32 pid_next = ctx->next_pid;
     u64 ts = bpf_ktime_get_ns();

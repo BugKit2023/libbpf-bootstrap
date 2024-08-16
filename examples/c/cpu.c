@@ -66,7 +66,6 @@ int main(int argc, char **argv)
 
         sleep(TIME_WINDOW_SEC);
     }
-
 cleanup:
 	cpu_bpf__destroy(skel);
 	return -err;
