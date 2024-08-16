@@ -11,13 +11,11 @@
 #define SEC_TO_NS 1000000000ULL
 #define TIME_WINDOW_SEC 5
 
-static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
-{
-	return vfprintf(stderr, format, args);
+static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
+    return vfprintf(stderr, format, args);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     struct cpu_bpf *skel;
     int err;
 
@@ -45,28 +43,27 @@ int main(int argc, char **argv)
 
     while (1) {
         __u32 pid = 0, next_pid;
-        __u64 current_value, previous_value;
+        __u64 current_value;
 
+        // Iterate over all PIDs in the map
         while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
             if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &current_value) == 0) {
-                __u64 delta_ns = current_value;
-
-                // Convert to mCPU (milli-CPU)
-                __u64 delta_mcpu = (delta_ns * 1000) / (TIME_WINDOW_SEC * SEC_TO_NS);
+                // Calculate mCPU (milli-CPU)
+                __u64 delta_mcpu = (current_value * 1000) / (TIME_WINDOW_SEC * SEC_TO_NS);
 
                 printf("Process %u used %llu mCPU in the last %d seconds\n", next_pid, delta_mcpu, TIME_WINDOW_SEC);
 
                 // Reset the CPU time for the next interval
-                previous_value = current_value;
-                current_value = 0;
-                bpf_map_update_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &current_value, BPF_ANY);
+                __u64 reset_value = 0;
+                bpf_map_update_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &reset_value, BPF_ANY);
             }
             pid = next_pid;
         }
 
         sleep(TIME_WINDOW_SEC);
     }
+
 cleanup:
-	cpu_bpf__destroy(skel);
-	return -err;
+    cpu_bpf__destroy(skel);
+    return -err;
 }
