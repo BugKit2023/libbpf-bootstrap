@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
-/* Copyright (c) 2020 Facebook */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -9,11 +7,10 @@
 #include "cpu.skel.h"
 
 #define INTERVAL 5
-#define MAX_KEY_LENGTH 100
 #define MAX_ENTRIES 100
 
 typedef struct KeyValue {
-    __u32 key[MAX_KEY_LENGTH];
+    __u32 key;    // Используем одиночное значение
     __u64 value;
 } KeyValue;
 
@@ -25,7 +22,6 @@ typedef struct KeyValueStore {
 void init_store(KeyValueStore *store) {
     store->size = 0;
 }
-
 
 int add_entry(KeyValueStore *store, __u32 key, __u64 value) {
     if (store->size >= MAX_ENTRIES) {
@@ -57,20 +53,17 @@ __u64* get_value(KeyValueStore *store, __u32 key) {
     return NULL; // Key not found
 }
 
-
-static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
-{
-	return vfprintf(stderr, format, args);
+static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
+    return vfprintf(stderr, format, args);
 }
 
-int main(int argc, char **argv)
-{
-	struct cpu_bpf *skel;
-	int err;
+int main(int argc, char **argv) {
+    struct cpu_bpf *skel;
+    int err;
 
-	long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+    long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
 
-	if (num_cores == -1) {
+    if (num_cores == -1) {
         perror("sysconf");
         return 1;
     }
@@ -80,31 +73,31 @@ int main(int argc, char **argv)
 
     printf("Number of CPU cores: %ld\n", num_cores);
 
-	/* Set up libbpf errors and debug info callback */
-	libbpf_set_print(libbpf_print_fn);
+    /* Set up libbpf errors and debug info callback */
+    libbpf_set_print(libbpf_print_fn);
 
-	/* Open BPF application */
-	skel = cpu_bpf__open();
-	if (!skel) {
-		fprintf(stderr, "Failed to open BPF skeleton\n");
-		return 1;
-	}
+    /* Open BPF application */
+    skel = cpu_bpf__open();
+    if (!skel) {
+        fprintf(stderr, "Failed to open BPF skeleton\n");
+        return 1;
+    }
 
-	/* Load & verify BPF programs */
-	err = cpu_bpf__load(skel);
-	if (err) {
-		fprintf(stderr, "Failed to load and verify BPF skeleton\n");
-		goto cleanup;
-	}
+    /* Load & verify BPF programs */
+    err = cpu_bpf__load(skel);
+    if (err) {
+        fprintf(stderr, "Failed to load and verify BPF skeleton\n");
+        goto cleanup;
+    }
 
-	/* Attach tracepoint handler */
-	err = cpu_bpf__attach(skel);
-	if (err) {
-		fprintf(stderr, "Failed to attach BPF skeleton\n");
-		goto cleanup;
-	}
+    /* Attach tracepoint handler */
+    err = cpu_bpf__attach(skel);
+    if (err) {
+        fprintf(stderr, "Failed to attach BPF skeleton\n");
+        goto cleanup;
+    }
 
-	printf("Tracking CPU usage. Press Ctrl+C to stop.\n");
+    printf("Tracking CPU usage. Press Ctrl+C to stop.\n");
 
     while (1) {
         __u32 pid = 0, next_pid;
@@ -126,7 +119,7 @@ int main(int argc, char **argv)
             pid = next_pid;
         }
 
-        for (int i = 0; i < store->size; i++) {
+        for (int i = 0; i < store.size; i++) {
             __u64 percent = (total_time > 0) ? (store.entries[i].value * 100) / total_time : 0;
             printf("Process %u used %llu ns of CPU time, which is %llu%% of total\n", store.entries[i].key, store.entries[i].value, percent);
         }
@@ -135,6 +128,6 @@ int main(int argc, char **argv)
     }
 
 cleanup:
-	cpu_bpf__destroy(skel);
-	return -err;
+    cpu_bpf__destroy(skel);
+    return -err;
 }
