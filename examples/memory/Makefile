@@ -6,7 +6,7 @@ CC = gcc
 CFLAGS = -Wall -O2
 
 # Исходные файлы
-SRCS = main.c
+SRCS = memory.c
 
 # Объектные файлы
 OBJS = $(SRCS:.c=.o)
@@ -16,18 +16,18 @@ all: $(TARGET)
 
 # Правило для создания исполняемого файла
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+    $(CC) $(CFLAGS) -o $@ $(OBJS)
 
 # Правило для создания объектного файла
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+    $(CC) $(CFLAGS) -c $< -o $@
 
 # Правило для очистки временных файлов
 clean:
-	rm -f $(TARGET) $(OBJS)
+    rm -f $(TARGET) $(OBJS)
 
 # Правило для запуска программы
 run: $(TARGET)
-	./$(TARGET)
+    ./$(TARGET)
 
 .PHONY: all clean run
