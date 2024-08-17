@@ -27,14 +27,14 @@ void get_memory_usage(int pid) {
 
     int found = 0;
     while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "VmPSS:", 6) == 0) {
+        if (strncmp(line, "VmRSS:", 6) == 0) {
             printf("PID: %d, %s", pid, line + 6);
             break;
         }
     }
 
     if (!found) {
-            printf("PID: %d, VmPSS: Not found or not available\n", pid);
+            printf("PID: %d, VmRSS: Not found or not available\n", pid);
     }
 
     fclose(file);
