@@ -26,29 +26,25 @@ int on_sched_switch(struct trace_event_raw_sched_switch *ctx) {
     u32 pid_current = ctx->next_pid;
     u64 ts = bpf_ktime_get_ns();
 
-    bpf_map_update_elem(&last_update, &pid_current, &ts, BPF_ANY);
+    if (pid_current != 0) {
+        bpf_map_update_elem(&last_update, &pid_current, &ts, BPF_ANY);
+    }
 
-//    u64 *pid_сurrent_lst_update_ts = bpf_map_lookup_elem(&last_update, &pid_сurrent);
-//    if (pid_сurrent_lst_update_ts) {
-//        u64 delta = ts - *prev_ts;
-//        *prev_ts += delta;
-//    } else {
-//        bpf_map_update_elem(&cpu_times, &pid, &ts, BPF_ANY);
-//    }
-
+    if (pid_prev != 0) {
     u64 *prev_ts = bpf_map_lookup_elem(&last_update, &pid_prev);
-    if (prev_ts) {
-        u64 delta = ts - *prev_ts;
-        u64 *cpu_time = bpf_map_lookup_elem(&cpu_times, &pid_prev);
-        if (cpu_time) {
-            *cpu_time += delta;
+        if (prev_ts) {
+            u64 delta = ts - *prev_ts;
+            u64 *cpu_time = bpf_map_lookup_elem(&cpu_times, &pid_prev);
+            if (cpu_time) {
+                *cpu_time += delta;
+            } else {
+                u64 initial_time = delta;
+                bpf_map_update_elem(&cpu_times, &pid_prev, &initial_time, BPF_ANY);
+            }
         } else {
-            u64 initial_time = delta;
+            u64 initial_time = 0;
             bpf_map_update_elem(&cpu_times, &pid_prev, &initial_time, BPF_ANY);
         }
-    } else {
-        u64 initial_time = 0;
-        bpf_map_update_elem(&cpu_times, &pid_prev, &initial_time, BPF_ANY);
     }
 
     return 0;
