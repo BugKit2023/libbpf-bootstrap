@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
         while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
             if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &value) == 0) {
                 __u64 *process_total_time = get_value(&total_time_store, next_pid);
-                printf("VALUE %llu\n", value);
+                printf("Process %u used %llu ns of CPU time\n", next_pid, value);
                 if (process_total_time != NULL) {
                     __u64 delta = value - *process_total_time;
                     add_entry(&store, next_pid, delta);
@@ -129,12 +129,14 @@ int main(int argc, char **argv) {
             total_time += store.entries[i].value;
         }
         printf("TOTAL %llu\n", total_time);
-
-        for (int i = 0; i < store.size; i++) {
-            __u64 percent = store.entries[i].value * 100 / total_time;
-            int percent_int = (int)percent;
-            printf("Percent of %u: %d\n", next_pid, percent);
+        if (total_time > 0) {
+            for (int i = 0; i < store.size; i++) {
+               __u64 percent = store.entries[i].value * 100 / total_time;
+               int percent_int = (int)percent;
+               printf("Percent of %u: %d\n", next_pid, percent);
+            }
         }
+
         sleep(INTERVAL);
     }
 
