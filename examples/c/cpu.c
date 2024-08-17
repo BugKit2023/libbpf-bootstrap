@@ -129,13 +129,16 @@ int main(int argc, char **argv) {
             total_time += store.entries[i].value;
         }
         printf("TOTAL %llu\n", total_time);
+        __u64 total_calculated_time = 0;
         if (total_time > 0) {
             for (int i = 0; i < store.size; i++) {
                __u64 percent = store.entries[i].value * 100 / total_time;
                int percent_int = (int)percent;
-               printf("Percent of %u: %d\n", next_pid, percent);
+               total_calculated_time += percent_int;
+               printf("Percent of %u: %d\n", store.entries[i].key, percent);
             }
         }
+        printf("CALCULATED %llu %\n", total_calculated_time);
 
         sleep(INTERVAL);
     }
