@@ -17,6 +17,7 @@ void get_memory_usage(int pid) {
     char line[BUFFER_SIZE];
     snprintf(path, sizeof(path), PROC_PATH "/%d/status", pid);
 
+
     file = fopen(path, "r");
     if (!file) {
         // Ошибка может возникать для завершенных процессов или недоступных файлов
