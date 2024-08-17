@@ -125,13 +125,13 @@ int main(int argc, char **argv) {
         }
 
         __u64 total_time = 0;
-        for (int i = 0; i < store->size; i++) {
-            total_time += store->entries[i].value;
+        for (int i = 0; i < store.size; i++) {
+            total_time += store.entries[i].value;
         }
         printf("TOTAL %llu\n", total_time);
 
-        for (int i = 0; i < store->size; i++) {
-            __u64 percent = store->entries[i].value * 100 / total_time;
+        for (int i = 0; i < store.size; i++) {
+            __u64 percent = store.entries[i].value * 100 / total_time;
             int percent_int = (int)percent;
             printf("Percent of %u: %d\n", next_pid, percent);
         }
