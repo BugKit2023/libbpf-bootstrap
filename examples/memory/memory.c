@@ -28,6 +28,7 @@ void get_memory_usage(int pid) {
     int found = 0;
     while (fgets(line, sizeof(line), file)) {
         if (strncmp(line, "VmRSS:", 6) == 0) {
+            found = 1;
             printf("PID: %d, %s", pid, line + 6);
             break;
         }

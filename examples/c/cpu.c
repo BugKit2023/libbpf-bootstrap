@@ -8,6 +8,8 @@
 #include <bpf/libbpf.h>
 #include "cpu.skel.h"
 
+#define INTERVAL 5
+
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
 	return vfprintf(stderr, format, args);
@@ -17,6 +19,15 @@ int main(int argc, char **argv)
 {
 	struct cpu_bpf *skel;
 	int err;
+
+	long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+
+	if (num_cores == -1) {
+        perror("sysconf");
+        return 1;
+    }
+
+    printf("Number of CPU cores: %ld\n", num_cores);
 
 	/* Set up libbpf errors and debug info callback */
 	libbpf_set_print(libbpf_print_fn);
@@ -53,7 +64,7 @@ int main(int argc, char **argv)
             }
             pid = next_pid;
         }
-        sleep(1);
+        sleep(INTERVAL);
     }
 
 cleanup:
