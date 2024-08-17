@@ -57,6 +57,12 @@ KeyValue* get_entry(KeyValueStore *store, __u32 key) {
     return NULL; // Key not found
 }
 
+__u64 get_current_time_ns() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
     return vfprintf(stderr, format, args);
 }
@@ -105,7 +111,7 @@ int main(int argc, char **argv) {
     while (1) {
         __u32 pid = 0, next_pid;
         __u64 value;
-        __u64 current_time = bpf_ktime_get_ns();
+        __u64 current_time = get_current_time_ns();
         __u64 total_time = 0;
 
         // Traverse all process entries in BPF map
