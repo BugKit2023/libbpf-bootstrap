@@ -71,6 +71,9 @@ int main(int argc, char **argv) {
     KeyValueStore store;
     init_store(&store);
 
+    KeyValueStore total_time_store;
+    init_store(&total_time_store);
+
     printf("Number of CPU cores: %ld\n", num_cores);
 
     /* Set up libbpf errors and debug info callback */
@@ -99,39 +102,39 @@ int main(int argc, char **argv) {
 
     printf("Tracking CPU usage. Press Ctrl+C to stop.\n");
 
-    // Сохраняем время последнего обновления
-    __u64 last_update = 0;
-
     while (1) {
         __u32 pid = 0, next_pid;
         __u64 value;
-        __u64 total_time = 0;
-
-        __u64 now = time(NULL) * 1000000000; // Текущее время в наносекундах
 
         // Обновление времени использования CPU
         while (bpf_map_get_next_key(bpf_map__fd(skel->maps.cpu_times), &pid, &next_pid) == 0) {
             if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.cpu_times), &next_pid, &value) == 0) {
-                __u64 *process_time = get_value(&store, next_pid);
-                if (process_time != NULL) {
-                    __u64 delta = value - *process_time;
+                __u64 *process_total_time = get_value(&total_time_store, next_pid);
+                printf("VALUE %llu\n", value);
+                if (process_total_time != NULL) {
+                    __u64 delta = value - *process_total_time;
                     add_entry(&store, next_pid, delta);
+                    add_entry(&total_time_store, next_pid, value);
                 } else {
-                    add_entry(&store, next_pid, value);
+                    __u64 start_time = 0;
+                    add_entry(&store, next_pid, start_time);
+                    add_entry(&total_time_store, next_pid, start_time);
                 }
-                total_time += value;
             }
             pid = next_pid;
         }
 
-        // Пересчитываем только последние 5 секунд
-        for (int i = 0; i < store.size; i++) {
-            __u64 time_since_last_update = now - last_update;
-            __u64 percent = (total_time > 0) ? (store.entries[i].value * 100) / total_time : 0;
-            printf("Process %u used %llu ns of CPU time, which is %llu%% of total\n", store.entries[i].key, store.entries[i].value, percent);
+        __u64 total_time = 0;
+        for (int i = 0; i < store->size; i++) {
+            total_time += store->entries[i].value;
         }
+        printf("TOTAL %llu\n", total_time);
 
-        last_update = now;
+        for (int i = 0; i < store->size; i++) {
+            __u64 percent = store->entries[i].value * 100 / total_time;
+            int percent_int = (int)percent;
+            printf("Percent of %u: %d\n", next_pid, percent);
+        }
         sleep(INTERVAL);
     }
 
