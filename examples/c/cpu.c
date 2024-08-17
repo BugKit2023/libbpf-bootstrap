@@ -124,25 +124,25 @@ int main(int argc, char **argv) {
             pid = next_pid;
         }
 
-        __u64 total_time = 0;
+        double  total_time = 0.0;
         for (int i = 0; i < store.size; i++) {
             if (store.entries[i].value > 10000) {
-                total_time += store.entries[i].value;
+                total_time += (double) store.entries[i].value;
             }
         }
         printf("TOTAL %llu\n", total_time);
-        __u64 total_calculated_time = 0;
+        double total_calculated_time = 0.0;
         if (total_time > 0) {
             for (int i = 0; i < store.size; i++) {
                 if (store.entries[i].value > 10000) {
-                    __u64 percent = store.entries[i].value * 100 / total_time;
-                    int percent_int = (int)percent;
-                    total_calculated_time += percent_int;
-                    printf("Percent of %u: %d\n", store.entries[i].key, percent);
+                    double percent = (double)(store.entries[i].value * 100) / (double)total_time;
+                   // int percent_int = (int)percent;
+                    total_calculated_time += percent;
+                    printf("Percent of %u: %.2f\n", store.entries[i].key, percent);
                 }
             }
         }
-        printf("CALCULATED %llu %\n", total_calculated_time);
+        printf("CALCULATED %.2f %\n", total_calculated_time);
 
         sleep(INTERVAL);
     }
