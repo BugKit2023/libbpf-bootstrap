@@ -25,11 +25,16 @@ void get_memory_usage(int pid) {
         return;
     }
 
+    int found = 0;
     while (fgets(line, sizeof(line), file)) {
         if (strncmp(line, "VmPSS:", 6) == 0) {
             printf("PID: %d, %s", pid, line + 6);
             break;
         }
+    }
+
+    if (!found) {
+            printf("PID: %d, VmPSS: Not found or not available\n", pid);
     }
 
     fclose(file);
@@ -49,6 +54,7 @@ void scan_processes() {
         if (entry->d_type == DT_DIR) {
             int pid = atoi(entry->d_name);
             if (pid > 0) {
+                printf("Scanning PID: %d\n", pid);
                 get_memory_usage(pid);
             }
         }
