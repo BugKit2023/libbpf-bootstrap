@@ -5,6 +5,8 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
+#define ECHO_CMD "echo"
+#define BUF_SIZE 256  // Размер буфера для чтения
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -15,8 +17,20 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     size_t count = BPF_CORE_READ(ctx, args[2]);
 
     if (fd == STDOUT_FD) {
-        int pid = bpf_get_current_pid_tgid() >> 32;
-        bpf_trace_printk("HELLO %d\n", sizeof("HELLO %d\n"), pid);
+        // Временный буфер для чтения данных
+        char temp_buf[BUF_SIZE];  // Можно изменить размер в зависимости от предполагаемого размера буфера
+
+        if (count <= sizeof(temp_buf)) {
+            bpf_probe_read(temp_buf, count, buf);
+
+            // Проверка, содержит ли буфер команду "echo"
+            if (strstr(temp_buf, ECHO_CMD) != NULL) {
+                int pid = bpf_get_current_pid_tgid() >> 32;
+
+                // Вывод содержимого буфера, если оно принадлежит команде echo
+                bpf_trace_printk("ECHO COMMAND %d: %s\n", pid, temp_buf);
+            }
+        }
     }
 
     return 0;
