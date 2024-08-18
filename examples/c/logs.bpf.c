@@ -13,6 +13,7 @@ int trace_write(void *ctx) {
     // void *buf = (void *)BPF_CORE_READ(ctx, si); // Оставляем это, если действительно нужно
 
 //    bpf_trace_printk("FD: %d, Bytes: %llu\n", fd, count);
-    bpf_trace_printk("HELLO\n");
+    bpf_trace_printk("HELLO\n", sizeof("HELLO\n"));
+
     return 0;
 }
