@@ -39,6 +39,14 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     size_t count = BPF_CORE_READ(ctx, args[2]);
 
     if (fd == STDOUT_FD) {
+        char temp_buf[BUF_SIZE];
+        if (bpf_probe_read_user(temp_buf, count, buf) == 0) {
+            if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
+                int pid = bpf_get_current_pid_tgid() >> 32;
+                bpf_trace_printk("2222 %d\n", sizeof("2222 %d\n"), pid);
+            }
+        }
+
     }
 //
 //    if (fd == STDOUT_FD) {
