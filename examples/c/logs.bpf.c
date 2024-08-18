@@ -6,7 +6,27 @@
 
 #define STDOUT_FD 1
 #define ECHO_CMD "echo"
-#define BUF_SIZE 256  // Размер буфера для чтения
+#define BUF_SIZE 256
+#define ECHO_CMD_LEN 4
+
+static __always_inline const char *bpf_strstr(const char *haystack, const char *needle) {
+    while (*haystack) {
+        const char *h = haystack;
+        const char *n = needle;
+
+        while (*h && *n && *h == *n) {
+            h++;
+            n++;
+        }
+
+        if (!*n)
+            return haystack;
+
+        haystack++;
+    }
+
+    return NULL;
+}
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -24,7 +44,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
             bpf_probe_read(temp_buf, count, buf);
 
             // Проверка, содержит ли буфер команду "echo"
-            if (strstr(temp_buf, ECHO_CMD) != NULL) {
+            if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
                 int pid = bpf_get_current_pid_tgid() >> 32;
 
                 // Вывод содержимого буфера, если оно принадлежит команде echo
