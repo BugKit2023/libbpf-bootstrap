@@ -14,9 +14,13 @@ struct log_event {
 };
 
 // Функция для обработки событий из perf buffer
-static void handle_event(void *ctx, int cpu, void *data, __aligned(8) __size_t size) {
-    struct log_event *event = (struct log_event *)data;
-    printf("Captured log from PID %d: %s\n", event->pid, event->data);
+//static void handle_event(void *ctx, int cpu, void *data, __aligned(8) __size_t size) {
+//    struct log_event *event = (struct log_event *)data;
+//    printf("Captured log from PID %d: %s\n", event->pid, event->data);
+//}
+
+static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
+    return vfprintf(stderr, format, args);
 }
 
 int main(int argc, char **argv) {
