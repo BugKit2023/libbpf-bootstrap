@@ -38,15 +38,15 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
     size_t count = BPF_CORE_READ(ctx, args[2]);
 
-    if (fd == STDOUT_FD) {
+    if (fd == STDOUT_FD && count > 0 && count <= BUF_SIZE) {
         char temp_buf[BUF_SIZE];
-        if (count > 0 && count <= BUF_SIZE && bpf_probe_read_user(temp_buf, count, buf) == 0) {
+
+        // Приведение count к unsigned и маскировка
+        if (bpf_probe_read_user(temp_buf, count & (BUF_SIZE - 1), buf) == 0) {
             if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
-                int pid = bpf_get_current_pid_tgid() >> 32;
                 bpf_trace_printk("2222 %d\n", sizeof("2222 %d\n"), pid);
             }
         }
-
     }
     return 0;
 }
