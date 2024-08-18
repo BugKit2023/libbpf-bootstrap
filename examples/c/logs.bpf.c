@@ -44,8 +44,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
            if (bpf_strstr("echo dddd", ECHO_CMD) != NULL) {
                int pid = bpf_get_current_pid_tgid() >> 32;
 
-               // Вывод содержимого буфера, если оно принадлежит команде echo
-               bpf_trace_printk("HELO %s\n", sizeof("HELO %s\n"), pid);
+               bpf_trace_printk("HELlllO %s\n", sizeof("HELlllO %s\n"), pid);
            }
         }
     }
