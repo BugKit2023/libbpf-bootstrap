@@ -8,6 +8,25 @@
 #define ECHO_CMD "echo"
 #define BUF_SIZE 256
 
+static __always_inline const char *bpf_strstr(const char *haystack, const char *needle) {
+    while (*haystack) {
+        const char *h = haystack;
+        const char *n = needle;
+
+        while (*h && *n && *h == *n) {
+            h++;
+            n++;
+        }
+
+        if (!*n)
+            return haystack;
+
+        haystack++;
+    }
+
+    return NULL;
+}
+
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_write")
@@ -21,11 +40,13 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
 
 
         if (count <= sizeof(temp_buf)) {
-            bpf_probe_read(temp_buf, count, buf);
 
+           if (bpf_strstr("echo dddd", ECHO_CMD) != NULL) {
+               int pid = bpf_get_current_pid_tgid() >> 32;
 
-            int pid = bpf_get_current_pid_tgid() >> 32;
-            bpf_trace_printk("HELO %s\n", sizeof("HELO %s\n"), temp_buf);
+               // Вывод содержимого буфера, если оно принадлежит команде echo
+               bpf_trace_printk("HELO %s\n", sizeof("HELO %s\n"), pid);
+           }
         }
     }
 
