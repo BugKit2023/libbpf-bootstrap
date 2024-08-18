@@ -8,12 +8,10 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(struct pt_regs *ctx) {
-    int pid = bpf_get_current_pid_tgid() >> 32;
-    u32 fd = (u32)ctx->di;
-    u64 count = ctx->dx;
-    void *buf = (void *)ctx->si;
+    u32 fd = (u32)BPF_CORE_READ(ctx, di);  // Использование bpf_core_read для совместимости
+    u64 count = BPF_CORE_READ(ctx, dx);    // Использование bpf_core_read
+    // void *buf = (void *)BPF_CORE_READ(ctx, si); // Оставляем это, если действительно нужно
 
-    // Вывод информации о системном вызове
-    bpf_trace_printk("FD: %d, Bytes: %llu, Data: %s\n", fd, count, (char *)buf);
+    bpf_trace_printk("FD: %d, Bytes: %llu\n", fd, count);
     return 0;
 }
