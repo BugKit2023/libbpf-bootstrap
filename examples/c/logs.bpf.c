@@ -13,9 +13,9 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(void *ctx) {
     // Входные параметры для tracepoint
-    int fd = (int)BPF_CORE_READ(ctx, fd);
-    const char *buf = (const char *)BPF_CORE_READ(ctx, buf);
-    size_t count = (size_t)BPF_CORE_READ(ctx, count);
+    int fd = (int)BPF_CORE_READ(ctx, args[0]);  // Параметр fd
+    const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);  // Параметр buf
+    size_t count = (size_t)BPF_CORE_READ(ctx, args[2]);
 
     char data[MAX_LOG_SIZE];
     int pid = bpf_get_current_pid_tgid() >> 32; // Получаем PID процесса
