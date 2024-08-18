@@ -2,6 +2,8 @@
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 
+#define MAX_LOG_SIZE 256
+
 struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
@@ -11,9 +13,9 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(void *ctx) {
     // Входные параметры для tracepoint
-    int fd = PT_REGS_PARM1(ctx);
-    const char __user *buf = (const char __user *)PT_REGS_PARM2(ctx);
-    size_t count = PT_REGS_PARM3(ctx);
+    int fd = (int)BPF_CORE_READ(ctx, fd);
+    const char *buf = (const char *)BPF_CORE_READ(ctx, buf);
+    size_t count = (size_t)BPF_CORE_READ(ctx, count);
 
     char data[MAX_LOG_SIZE];
     int pid = bpf_get_current_pid_tgid() >> 32; // Получаем PID процесса
