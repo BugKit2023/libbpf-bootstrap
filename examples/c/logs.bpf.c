@@ -41,8 +41,8 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     if (fd == STDOUT_FD && count > 0 && count <= BUF_SIZE) {
         char temp_buf[BUF_SIZE];
 
-        // Приведение count к unsigned и маскировка
-        if (bpf_probe_read_user(temp_buf, count & (BUF_SIZE - 1), buf) == 0) {
+        // Исправление чтения данных
+        if (bpf_probe_read_user(temp_buf, count, buf) == 0) {
             if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
                 bpf_trace_printk("2222 %d\n", sizeof("2222 %d\n"), pid);
             }
