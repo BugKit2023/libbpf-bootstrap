@@ -40,31 +40,13 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
 
     if (fd == STDOUT_FD) {
         char temp_buf[BUF_SIZE];
-//        if (bpf_probe_read_user(temp_buf, count, buf) == 0) {
-//            if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
-//                int pid = bpf_get_current_pid_tgid() >> 32;
-//                bpf_trace_printk("2222 %d\n", sizeof("2222 %d\n"), pid);
-//            }
-//        }
+        if (count > 0 && count <= BUF_SIZE && bpf_probe_read_user(temp_buf, count, buf) == 0) {
+            if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
+                int pid = bpf_get_current_pid_tgid() >> 32;
+                bpf_trace_printk("2222 %d\n", sizeof("2222 %d\n"), pid);
+            }
+        }
 
     }
-//
-//    if (fd == STDOUT_FD) {
-//        char temp_buf[BUF_SIZE];
-//
-//        if (count <= sizeof(temp_buf)) {
-//
-//
-//            if (bpf_probe_read_kernel(temp_buf, count, buf) == 0) {
-//                if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
-//                    int pid = bpf_get_current_pid_tgid() >> 32;
-//
-//                    bpf_trace_printk("HELlllO %d\n", sizeof("HELlllO %d\n"), pid);
-//                }
-//            }
-//
-//        }
-//    }
-
     return 0;
 }
