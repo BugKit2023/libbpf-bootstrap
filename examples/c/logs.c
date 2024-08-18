@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include <bpf/libbpf.h>
-#include "cpu.skel.h"
+#include "logs.skel.h"
 
 #define LOG_BUF_SIZE 256
 
