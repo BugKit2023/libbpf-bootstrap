@@ -12,29 +12,37 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(void *ctx) {
-    // Входные параметры для tracepoint
-    int fd = (int)bpf_get_smp_processor_id(); // Получаем fd как пример
-    const char *buf = (const char *)ctx; // Получаем buf как пример
-    size_t count = (size_t)ctx; // Получаем count как пример
+    int pid = bpf_get_current_pid_tgid() >> 32;
+    u32 fd = (u32)ctx->di;   // Первый параметр: файловый дескриптор (di на x86_64)
+    u64 count = ctx->dx;     // Второй параметр: количество байт (dx на x86_64)
+    void *buf = (void *)ctx->si; // Третий параметр: указатель на буфер (si на x86_64)
 
-    char data[MAX_LOG_SIZE];
-    int pid = bpf_get_current_pid_tgid() >> 32; // Получаем PID процесса
+    // Вывод информации о системном вызове
+    bpf_trace_printk("FD: %d, Bytes: %llu, Data: %s\n", fd, count, (char *)buf);
 
-    // Проверяем, что запись идет в stdout (fd == 1) или stderr (fd == 2)
-    if (fd != 1 && fd != 2) {
-        return 0;
-    }
-
-    // Копируем данные из пользовательского буфера в eBPF
-    if (bpf_probe_read_user(&data, sizeof(data), buf) == 0) {
-        // Отправляем данные и PID в perf buffer
-        struct {
-            int pid;
-            char data[MAX_LOG_SIZE];
-        } event = {pid};
-        __builtin_memcpy(event.data, data, count > MAX_LOG_SIZE ? MAX_LOG_SIZE : count);
-        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-    }
+//    // Входные параметры для tracepoint
+//    int fd = (int)bpf_get_smp_processor_id(); // Получаем fd как пример
+//    const char *buf = (const char *)ctx; // Получаем buf как пример
+//    size_t count = (size_t)ctx; // Получаем count как пример
+//
+//    char data[MAX_LOG_SIZE];
+//    int pid = bpf_get_current_pid_tgid() >> 32; // Получаем PID процесса
+//
+//    // Проверяем, что запись идет в stdout (fd == 1) или stderr (fd == 2)
+//    if (fd != 1 && fd != 2) {
+//        return 0;
+//    }
+//
+//    // Копируем данные из пользовательского буфера в eBPF
+//    if (bpf_probe_read_user(&data, sizeof(data), buf) == 0) {
+//        // Отправляем данные и PID в perf buffer
+//        struct {
+//            int pid;
+//            char data[MAX_LOG_SIZE];
+//        } event = {pid};
+//        __builtin_memcpy(event.data, data, count > MAX_LOG_SIZE ? MAX_LOG_SIZE : count);
+//        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+//    }
 
     return 0;
 }
