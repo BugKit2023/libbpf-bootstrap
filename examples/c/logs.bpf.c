@@ -4,9 +4,9 @@
 
 #define MAX_LOG_SIZE 256
 
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-} events SEC(".maps");
+//struct {
+//    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+//} events SEC(".maps");
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 

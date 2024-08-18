@@ -8,10 +8,10 @@
 
 #define LOG_BUF_SIZE 256
 
-struct log_event {
-    int pid;
-    char data[LOG_BUF_SIZE];
-};
+//struct log_event {
+//    int pid;
+//    char data[LOG_BUF_SIZE];
+//};
 
 // Функция для обработки событий из perf buffer
 //static void handle_event(void *ctx, int cpu, void *data, __aligned(8) __size_t size) {
