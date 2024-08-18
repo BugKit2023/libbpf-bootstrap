@@ -11,7 +11,7 @@ struct {
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_write")
-int trace_write(void *ctx) {
+int trace_write(struct pt_regs *ctx) {
     int pid = bpf_get_current_pid_tgid() >> 32;
     u32 fd = (u32)ctx->di;   // Первый параметр: файловый дескриптор (di на x86_64)
     u64 count = ctx->dx;     // Второй параметр: количество байт (dx на x86_64)
