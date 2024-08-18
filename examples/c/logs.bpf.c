@@ -20,7 +20,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         char temp_buf[BUF_SIZE];
 
         if (count <= sizeof(temp_buf)) {
-            bpf_probe_read(temp_buf, count, buf);
+
 
             int pid = bpf_get_current_pid_tgid() >> 32;
             bpf_trace_printk("HELO %s\n", sizeof("HELO %s\n"), temp_buf);
