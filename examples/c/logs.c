@@ -41,6 +41,10 @@ int main(int argc, char **argv) {
 
     printf("Tracking Logs usage. Press Ctrl+C to stop.\n");
 
+    while (1) {
+        sleep(5);
+    }
+
 cleanup:
     logs_bpf__destroy(skel);
     return -err;
