@@ -38,14 +38,16 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     if (fd == STDOUT_FD) {
         char temp_buf[BUF_SIZE];
 
-
         if (count <= sizeof(temp_buf)) {
 
-           if (bpf_strstr("echo dddd", ECHO_CMD) != NULL) {
-               int pid = bpf_get_current_pid_tgid() >> 32;
+            if (bpf_probe_read_kernel(temp_buf, count, buf) == 0) {
+                if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
+                    int pid = bpf_get_current_pid_tgid() >> 32;
 
-               bpf_trace_printk("HELlllO %s\n", sizeof("HELlllO %s\n"), pid);
-           }
+                    bpf_trace_printk("HELlllO %d\n", sizeof("HELlllO %d\n"), pid);
+                }
+            }
+
         }
     }
 
