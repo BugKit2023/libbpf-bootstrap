@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
-
-#define MAX_LOG_SIZE 256
+#include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 

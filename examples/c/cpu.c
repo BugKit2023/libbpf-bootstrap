@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     /* Load & verify BPF programs */
     err = cpu_bpf__load(skel);
     if (err) {
-        fprintf(stderr, "Failed to load and verify BPF skeleton\n");
+        fprintf(stderr, "Failed to load and verify BPF skeleton: %d\n", err);
         goto cleanup;
     }
 
