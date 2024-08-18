@@ -23,7 +23,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
             bpf_probe_read(temp_buf, count, buf);
 
             int pid = bpf_get_current_pid_tgid() >> 32;
-            bpf_trace_printk("ECHO COMMAND %d: %s\n", pid, temp_buf);
+            bpf_trace_printk("HELLO %s\n", sizeof("HELLO %s\n"), temp_buf);
         }
     }
 
