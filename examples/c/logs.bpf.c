@@ -40,13 +40,18 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
 
         if (count <= sizeof(temp_buf)) {
 
-            if (bpf_probe_read_kernel(temp_buf, count, buf) == 0) {
-                if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
-                    int pid = bpf_get_current_pid_tgid() >> 32;
+        if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
+            int pid = bpf_get_current_pid_tgid()
+            bpf_trace_printk("HELlllO %d\n", sizeof("HELlllO %d\n"), pid);
+        }
 
-                    bpf_trace_printk("HELlllO %d\n", sizeof("HELlllO %d\n"), pid);
-                }
-            }
+//            if (bpf_probe_read_kernel(temp_buf, count, buf) == 0) {
+//                if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
+//                    int pid = bpf_get_current_pid_tgid() >> 32;
+//
+//                    bpf_trace_printk("HELlllO %d\n", sizeof("HELlllO %d\n"), pid);
+//                }
+//            }
 
         }
     }
