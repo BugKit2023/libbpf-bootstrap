@@ -6,6 +6,7 @@
 
 #define STDOUT_FD 1
 #define ECHO_CMD "echo"
+#define BUF_SIZE 256
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
