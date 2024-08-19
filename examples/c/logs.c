@@ -16,11 +16,21 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
     return vfprintf(stderr, format, args);
 }
 
+static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
+	struct {
+		__u64 timestamp;
+		int fd;
+        int pid;
+	} *e = data;
+
+	printf("Received event: PID = %d, FD = %d, Timestamp = %llu\n", e->pid, e->fd, e->timestamp);
+}
+
 int main(int argc, char **argv) {
     struct logs_bpf *skel;
     int err;
-    int perf_fd;
-    char buf[BUF_SIZE];
+    int perf_fd, ret = 0;
+    struct perf_buffer *pb;
 
     /* Set up libbpf errors and debug info callback */
     libbpf_set_print(libbpf_print_fn);
@@ -39,6 +49,12 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
 
+    perf_fd = bpf_map__fd(skel->maps.events);
+    if (perf_fd < 0) {
+        fprintf(stderr, "Failed to get perf event map FD\n");
+        goto cleanup;
+    }
+
     /* Attach tracepoint handler */
     err = logs_bpf__attach(skel);
     if (err) {
@@ -46,35 +62,31 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
 
-    perf_fd = bpf_map__fd(skel->maps.events);
-    if (perf_fd < 0) {
-        fprintf(stderr, "Failed to get perf event map FD\n");
-        goto cleanup;
+    pb = perf_buffer__new(perf_fd, 8, print_bpf_output, NULL, NULL, NULL);
+    ret = libbpf_get_error(pb);
+    if (ret) {
+    	printf("failed to setup perf_buffer: %d\n", ret);
+    	return 1;
     }
 
     printf("Tracking Logs usage. Press Ctrl+C to stop.\n");
     printf("Attempting to read from perf_fd: %d\n", perf_fd);
 
     while (1) {
-        printf("HELLO");
-        ssize_t bytes = read(perf_fd, buf, sizeof(buf));
-        if (bytes < 0) {
-            printf("Error: %s\n", strerror(errno));
-            printf("read failed");
-        } else if (bytes == 0) {
-            printf("No data");
-        } else {
-            printf("SUCCESS");
+        ret = perf_buffer__poll(pb, 1000);
+        if (ret < 0) {
+            fprintf(stderr, "Error polling perf buffer: %d\n", ret);
+        } else if (ret == 0) {
+            printf("Timeout, no events\n");
         }
-//
-//        /* Process the data in `buf` */
-//        char *ptr = buf;
-        sleep(2);
+
+        sleep(2);  // Задержка в 2 секунды перед следующим поллингом
     }
 
-    close(perf_fd);
+    perf_buffer__free(pb);
 
 cleanup:
+    close(perf_fd);
     logs_bpf__destroy(skel);
     return -err;
 }
