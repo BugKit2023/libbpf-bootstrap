@@ -27,6 +27,13 @@ struct {
     __type(value, struct LogArray);
 } logs SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, 1);  // Одно значение на процессор
+    __type(key, u32);
+    __type(value, struct LogArray);
+} temp_logs SEC(".maps");
+
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_write")
@@ -45,7 +52,9 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     log_array = bpf_map_lookup_elem(&logs, &pid);
     if (!log_array) {
         // Если запись для данного PID еще не существует, создаем новую
-        struct LogArray new_log_array = {0};
+        struct LogArray new_log_array = {};
+        new_log_array.count = 0;
+
         bpf_map_update_elem(&logs, &pid, &new_log_array, BPF_ANY);
         log_array = bpf_map_lookup_elem(&logs, &pid);
         if (!log_array) {
