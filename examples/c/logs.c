@@ -59,7 +59,8 @@ int main(int argc, char **argv) {
         ssize_t bytes = read(perf_fd, buf, sizeof(buf));
         if (bytes <= 0) {
             printf("read failed");
-            continue;
+        } else {
+            printf("SUCCESS");
         }
 //
 //        /* Process the data in `buf` */
