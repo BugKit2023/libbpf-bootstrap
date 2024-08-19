@@ -9,7 +9,6 @@
 #include "logs.skel.h"
 
 #define BUF_SIZE 4096
-#define POLL_TIMEOUT 5000
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
     return vfprintf(stderr, format, args);
@@ -18,8 +17,6 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 int main(int argc, char **argv) {
     struct logs_bpf *skel;
     int err;
-    int perf_fd;
-    struct pollfd pfd;
     char buf[BUF_SIZE];
 
     /* Set up libbpf errors and debug info callback */
@@ -53,10 +50,6 @@ int main(int argc, char **argv) {
     }
 
     printf("Tracking Logs usage. Press Ctrl+C to stop.\n");
-    printf("Attempting to read from perf_fd: %d\n", perf_fd);
-
-    pfd.fd = perf_fd;
-    pfd.events = POLLIN;  // Мониторинг на доступность данных для чтения
 
     while (1) {
         printf("HELLO");
