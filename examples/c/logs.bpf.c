@@ -6,7 +6,20 @@
 
 #define STDOUT_FD 1
 #define ECHO_CMD "echo"
-#define BUF_SIZE 256
+#define BUF_SIZE 128
+#define STRING_SIZE 256
+
+struct Log {
+    __aligned(8) u64 timestamp;
+    char str[STRING_SIZE];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, u32);
+    __type(value, Log);
+} logs SEC(".maps");
 
 static __always_inline const char *bpf_strstr(const char *haystack, const char *needle) {
     while (*haystack) {
@@ -32,21 +45,12 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(struct trace_event_raw_sys_enter *ctx) {
     int pid = bpf_get_current_pid_tgid() >> 32;
-    bpf_trace_printk("HELlllO %d\n", sizeof("HELlllO %d\n"), pid);
 
     int fd = BPF_CORE_READ(ctx, args[0]);
     const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
     size_t count = BPF_CORE_READ(ctx, args[2]);
 
-    if (fd == STDOUT_FD && count > 0 && count <= BUF_SIZE) {
-        char temp_buf[BUF_SIZE];
 
-        // Исправление чтения данных
-        if (bpf_probe_read_user(temp_buf, count, buf) == 0) {
-            if (bpf_strstr(temp_buf, ECHO_CMD) != NULL) {
-                bpf_trace_printk("2222 %d\n", sizeof("2222 %d\n"), pid);
-            }
-        }
-    }
+
     return 0;
 }
