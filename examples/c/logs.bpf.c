@@ -5,6 +5,7 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
+#define ECHO_PID = 1234;
 
 struct Event {
     u64 timestamp;
@@ -24,7 +25,7 @@ SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(struct trace_event_raw_sys_enter *ctx) {
     int pid = bpf_get_current_pid_tgid() >> 32;
     int fd = BPF_CORE_READ(ctx, args[0]);
-    if (fd == STDOUT_FD) {
+    if (fd == STDOUT_FD && pid == ECHO_PID) {
         struct Event event = {};
         event.timestamp = bpf_ktime_get_ns();
         event.pid = pid;
