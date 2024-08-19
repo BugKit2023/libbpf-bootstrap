@@ -29,7 +29,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         event.timestamp = bpf_ktime_get_ns();
         event.pid = pid;
         event.fd = fd;
-        bpf_perf_event_output(ctx, &log_events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     }
     return 0;
 }
