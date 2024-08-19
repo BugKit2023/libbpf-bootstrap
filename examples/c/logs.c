@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/resource.h>
+#include <stdarg.h>
 #include <bpf/libbpf.h>
+#include <sys/poll.h>
 #include "logs.skel.h"
 
 #define BUF_SIZE 4096
@@ -79,9 +81,12 @@ int main(int argc, char **argv) {
             } else {
                 // Обработка данных из `buf`
                 printf("Data received: %zd bytes\n", bytes);
+                // Можно добавить обработку данных из `buf` здесь
             }
         }
-        printf("HELLO!");
+
+        // Дополнительный вывод для отладки
+        printf("HELLO!\n");
         sleep(5);
     }
 
