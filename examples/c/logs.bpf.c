@@ -13,8 +13,10 @@ struct Event {
 };
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-} log_events SEC(".maps");
+	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
+} events SEC(".maps");
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
