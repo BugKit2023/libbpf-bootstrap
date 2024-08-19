@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include <stdarg.h>
+#include <errno.h>
 #include <bpf/libbpf.h>
 #include <sys/poll.h>
 #include "logs.skel.h"
@@ -57,8 +58,11 @@ int main(int argc, char **argv) {
     while (1) {
         printf("HELLO");
         ssize_t bytes = read(perf_fd, buf, sizeof(buf));
-        if (bytes <= 0) {
+        if (bytes < 0) {
+            printf("Error: %s\n", strerror(errno));
             printf("read failed");
+        } else if (bytes == 0) {
+            printf("No data");
         } else {
             printf("SUCCESS");
         }
