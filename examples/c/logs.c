@@ -52,18 +52,19 @@ int main(int argc, char **argv) {
     }
 
     printf("Tracking Logs usage. Press Ctrl+C to stop.\n");
+    printf("Attempting to read from perf_fd: %d\n", perf_fd);
 
     while (1) {
         printf("HELLO");
-        ssize_t bytes = read(perf_fd, buf, sizeof(buf));
-        if (bytes < 0) {
-            perror("read failed");
-            break;
-        }
-
-        /* Process the data in `buf` */
-        char *ptr = buf;
-        sleep(2);
+//        ssize_t bytes = read(perf_fd, buf, sizeof(buf));
+//        if (bytes < 0) {
+//            perror("read failed");
+//            break;
+//        }
+//
+//        /* Process the data in `buf` */
+//        char *ptr = buf;
+//        sleep(2);
     }
 
     close(perf_fd);
