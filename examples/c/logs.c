@@ -65,8 +65,6 @@ int main(int argc, char **argv) {
         sleep(2);
     }
 
-    close(perf_fd);
-
 cleanup:
     logs_bpf__destroy(skel);
     return -err;
