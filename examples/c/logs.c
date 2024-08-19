@@ -59,35 +59,17 @@ int main(int argc, char **argv) {
     pfd.events = POLLIN;  // Мониторинг на доступность данных для чтения
 
     while (1) {
-        // Ожидаем, пока появятся данные
-        int ret = poll(&pfd, 1, POLL_TIMEOUT); // Тайм-аут 5000 миллисекунд
-
-        if (ret < 0) {
-            perror("poll failed");
-            break;
-        } else if (ret == 0) {
-            printf("Timeout, no data available\n");
-            continue;
+        printf("HELLO");
+        ssize_t bytes = read(perf_fd, buf, sizeof(buf));
+        if (bytes < 0) {
+            printf("no bytes");
+        } else {
+            printf("HAVE BYTES");
         }
 
-        // Если есть доступные данные для чтения
-        if (pfd.revents & POLLIN) {
-            ssize_t bytes = read(perf_fd, buf, sizeof(buf));
-            if (bytes < 0) {
-                perror("read failed");
-                break;
-            } else if (bytes == 0) {
-                printf("No data read\n");
-            } else {
-                // Обработка данных из `buf`
-                printf("Data received: %zd bytes\n", bytes);
-                // Можно добавить обработку данных из `buf` здесь
-            }
-        }
-
-        // Дополнительный вывод для отладки
-        printf("HELLO!\n");
-        sleep(1);
+        /* Process the data in `buf` */
+        char *ptr = buf;
+        sleep(2);
     }
 
     close(perf_fd);
