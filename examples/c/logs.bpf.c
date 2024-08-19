@@ -10,7 +10,7 @@
 #define STRING_SIZE 256
 
 struct Log {
-    __aligned(8) u64 timestamp;
+    u64 timestamp;
     char str[STRING_SIZE];
 };
 
