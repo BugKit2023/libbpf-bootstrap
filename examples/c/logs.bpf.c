@@ -27,31 +27,11 @@ struct {
     __type(value, struct LogArray);
 } logs SEC(".maps");
 
-static __always_inline const char *bpf_strstr(const char *haystack, const char *needle) {
-    while (*haystack) {
-        const char *h = haystack;
-        const char *n = needle;
-
-        while (*h && *n && *h == *n) {
-            h++;
-            n++;
-        }
-
-        if (!*n)
-            return haystack;
-
-        haystack++;
-    }
-
-    return NULL;
-}
-
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(struct trace_event_raw_sys_enter *ctx) {
     int pid = bpf_get_current_pid_tgid() >> 32;
-    u64 ts = bpf_ktime_get_ns();
 
     int fd = BPF_CORE_READ(ctx, args[0]);
     const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
@@ -63,10 +43,39 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
 
     struct LogArray *log_array;
     log_array = bpf_map_lookup_elem(&logs, &pid);
+    if (!log_array) {
+        // Если запись для данного PID еще не существует, создаем новую
+        struct LogArray new_log_array = {0};
+        bpf_map_update_elem(&logs, &pid, &new_log_array, BPF_ANY);
+        log_array = bpf_map_lookup_elem(&logs, &pid);
+        if (!log_array) {
+            return 0;  // Если не удалось создать, выходим
+        }
+    }
+
+    if (log_array->count >= MAX_LOGS) {
+        return 0;  // Если массив логов заполнен, не добавляем новые записи
+    }
+
+    struct Log *new_log = &log_array->logs[log_array->count];
+    new_log->timestamp = bpf_ktime_get_ns();
+
+    if (count < sizeof(new_log->str)) {
+//        if (bpf_probe_read_user(new_log->str, count, buf) == 0) {
+//            new_log->str[count] = '\0';  // Нулевой символ в конце строки
+//        }
+    } else {
+//        bpf_probe_read_user(new_log->str, sizeof(new_log->str) - 1, buf);
+//        new_log->str[sizeof(new_log->str) - 1] = '\0';
+    }
+
+
 //    if (*logs) {
 //
 //    } else {
 //    }
+
+    log_array->count++;
 
     return 0;
 }
