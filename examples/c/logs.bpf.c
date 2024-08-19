@@ -8,17 +8,23 @@
 #define ECHO_CMD "echo"
 #define BUF_SIZE 128
 #define STRING_SIZE 256
+#define MAX_LOGS 10
 
 struct Log {
     u64 timestamp;
     char str[STRING_SIZE];
 };
 
+struct LogArray {
+    struct Log logs[MAX_LOGS];
+    int count;
+};
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, 1024);
     __type(key, u32);
-    __type(value, Log);
+    __type(value, struct LogArray);
 } logs SEC(".maps");
 
 static __always_inline const char *bpf_strstr(const char *haystack, const char *needle) {
@@ -45,12 +51,22 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(struct trace_event_raw_sys_enter *ctx) {
     int pid = bpf_get_current_pid_tgid() >> 32;
+    u64 ts = bpf_ktime_get_ns();
 
     int fd = BPF_CORE_READ(ctx, args[0]);
     const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
     size_t count = BPF_CORE_READ(ctx, args[2]);
 
+    if (fd != STDOUT_FD || count == 0) {
+        return 0;
+    }
 
+    struct LogArray *log_array;
+    log_array = bpf_map_lookup_elem(&logs, &pid);
+//    if (*logs) {
+//
+//    } else {
+//    }
 
     return 0;
 }
