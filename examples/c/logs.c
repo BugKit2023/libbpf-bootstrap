@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 
         // Дополнительный вывод для отладки
         printf("HELLO!\n");
-        sleep(5);
+        sleep(1);
     }
 
     close(perf_fd);
