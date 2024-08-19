@@ -9,6 +9,7 @@
 #include "logs.skel.h"
 
 #define BUF_SIZE 4096
+#define POLL_TIMEOUT 5000
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
     return vfprintf(stderr, format, args);
@@ -17,6 +18,7 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 int main(int argc, char **argv) {
     struct logs_bpf *skel;
     int err;
+    int perf_fd;
     char buf[BUF_SIZE];
 
     /* Set up libbpf errors and debug info callback */
@@ -55,15 +57,16 @@ int main(int argc, char **argv) {
         printf("HELLO");
         ssize_t bytes = read(perf_fd, buf, sizeof(buf));
         if (bytes < 0) {
-            printf("no bytes");
-        } else {
-            printf("HAVE BYTES");
+            perror("read failed");
+            break;
         }
 
         /* Process the data in `buf` */
         char *ptr = buf;
         sleep(2);
     }
+
+    close(perf_fd);
 
 cleanup:
     logs_bpf__destroy(skel);
