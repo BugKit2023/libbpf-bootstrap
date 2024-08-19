@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
         printf("HELLO");
         ssize_t bytes = read(perf_fd, buf, sizeof(buf));
         if (bytes <= 0) {
-            print("read failed");
+            printf("read failed");
             continue;
         }
 //
