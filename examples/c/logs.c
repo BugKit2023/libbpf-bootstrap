@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <bpf/libbpf.h>
+#include <fcntl.h>
 #include <sys/poll.h>
 #include "logs.skel.h"
 
