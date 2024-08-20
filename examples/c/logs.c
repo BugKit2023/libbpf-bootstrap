@@ -23,7 +23,21 @@ static void read_and_print_fd(int fd) {
     char buffer[4096];
     ssize_t bytes_read;
 
-    while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
+    while (1) {
+        bytes_read = read(fd, buffer, sizeof(buffer));
+        if (bytes_read < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // No data available, continue polling
+                continue;
+            } else {
+                perror("Error reading from file descriptor");
+                break;
+            }
+        }
+        if (bytes_read == 0) {
+            // End of file or file descriptor closed
+            break;
+        }
         fwrite(buffer, 1, bytes_read, stdout);
     }
 }
@@ -51,7 +65,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
         fprintf(stderr, "Failed to open FD %d for PID %d\n", e->fd, e->pid);
         return;
     }
-
+    printf("Successfully opened FD %d\n", fd);
     read_and_print_fd(fd);
     close(fd);
 }
