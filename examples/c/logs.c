@@ -46,9 +46,9 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 
     snprintf(path, sizeof(path), "/proc/%d/fd/%d", e->pid, e->fd);
 
-	int fd = open(path, O_RDONLY);
+	int fd = open_fd(e->pid, e->fd);
     if (fd < 0) {
-        perror("Failed to open file");
+        fprintf(stderr, "Failed to open FD %d for PID %d\n", e->fd, e->pid);
         return;
     }
 
