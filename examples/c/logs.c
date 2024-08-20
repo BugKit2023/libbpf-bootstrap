@@ -25,11 +25,14 @@ static void read_and_print_fd(int fd) {
 
     while (1) {
         printf("1111");
+        fflush(stdout);
         bytes_read = read(fd, buffer, sizeof(buffer));
         if (bytes_read < 0) {
             printf("2222");
+            fflush(stdout);
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 printf("33333");
+                fflush(stdout);
                 printf("ERROR ");
                 printf(errno);
 
@@ -42,10 +45,12 @@ static void read_and_print_fd(int fd) {
         }
         if (bytes_read == 0) {
             printf("4444");
+            fflush(stdout);
             // End of file or file descriptor closed
             break;
         }
         printf("cycle");
+        fflush(stdout);
         fwrite(buffer, 1, bytes_read, stdout);
     }
 }
