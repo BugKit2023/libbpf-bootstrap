@@ -13,6 +13,21 @@
 #define BUF_SIZE 4096
 #define POLL_TIMEOUT 5000
 
+static int open_fd(int pid, int fd) {
+    char path[256];
+    snprintf(path, sizeof(path), "/proc/%d/fd/%d", pid, fd);
+    return open(path, O_RDONLY);
+}
+
+static void read_and_print_fd(int fd) {
+    char buffer[4096];
+    ssize_t bytes_read;
+
+    while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
+        fwrite(buffer, 1, bytes_read, stdout);
+    }
+}
+
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
     return vfprintf(stderr, format, args);
 }
@@ -22,8 +37,6 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 		__u64 timestamp;
 		int fd;
         int pid;
-        off_t offset;
-        ssize_t len;
 	} *e = data;
 
 	char path[64];
@@ -39,19 +52,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
         return;
     }
 
-    if (lseek(fd, e->offset, SEEK_SET) < 0) {
-        perror("Failed to seek in file");
-        close(fd);
-        return;
-    }
-
-    ssize_t n = read(fd, buf, sizeof(buf) < e->len ? sizeof(buf) : e->len);
-    if (n > 0) {
-        printf("Log content: %.*s\n", (int)n, buf);
-    } else {
-        perror("Failed to read file");
-    }
-
+    read_and_print_fd(fd);
     close(fd);
 }
 

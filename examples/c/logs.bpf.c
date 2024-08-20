@@ -10,8 +10,6 @@ struct Event {
     u64 timestamp;
     int fd;
     int pid;
-    off_t offset;
-    ssize_t len;
 };
 
 struct {
@@ -26,16 +24,12 @@ SEC("tracepoint/syscalls/sys_enter_write")
 int trace_write(struct trace_event_raw_sys_enter *ctx) {
     int pid = bpf_get_current_pid_tgid() >> 32;
     int fd = BPF_CORE_READ(ctx, args[0]);
-    ssize_t count = BPF_CORE_READ(ctx, args[2]);
-    off_t offset = bpf_get_current_cgroup_id();
 
     if (fd == STDOUT_FD && (pid == 1622 || pid == 1564)) {
         struct Event event = {};
         event.timestamp = bpf_ktime_get_ns();
         event.pid = pid;
         event.fd = fd;
-        event.offset = offset;
-        event.len = count;
 
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
         bpf_trace_printk("Write syscall detected on stdout by PID %d\n", sizeof("Write syscall detected on stdout by PID %d\n"), pid);
