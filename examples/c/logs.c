@@ -24,12 +24,12 @@ static void read_and_print_fd(int fd) {
     ssize_t bytes_read;
 
     while (1) {
-        printf("1111")
+        printf("1111");
         bytes_read = read(fd, buffer, sizeof(buffer));
         if (bytes_read < 0) {
-            printf("2222")
+            printf("2222");
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                printf("33333")
+                printf("33333");
                 printf("ERROR ");
                 printf(errno);
 
@@ -41,7 +41,7 @@ static void read_and_print_fd(int fd) {
             }
         }
         if (bytes_read == 0) {
-            printf("4444")
+            printf("4444");
             // End of file or file descriptor closed
             break;
         }
