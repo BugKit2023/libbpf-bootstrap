@@ -10,6 +10,7 @@ struct Event {
     u64 timestamp;
     int fd;
     int pid;
+    char data[5];
 };
 
 struct {
@@ -30,6 +31,14 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         event.timestamp = bpf_ktime_get_ns();
         event.pid = pid;
         event.fd = fd;
+
+        const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
+        int size = BPF_CORE_READ(ctx, args[2]);
+
+
+        if (buf && size > 0) {
+           bpf_probe_read_user(event.data, size, buf);
+        }
 
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
         bpf_trace_printk("Write syscall detected on stdout by PID %d\n", sizeof("Write syscall detected on stdout by PID %d\n"), pid);

@@ -16,7 +16,7 @@
 static int open_fd(int pid, int fd) {
     char path[256];
     snprintf(path, sizeof(path), "/proc/%d/fd/%d", pid, fd);
-    return open(path, O_RDONLY);
+    return open(path, O_RDONLY | O_NONBLOCK);
 }
 
 static void read_and_print_fd(int fd) {
@@ -34,7 +34,7 @@ static void read_and_print_fd(int fd) {
                 printf("33333");
                 fflush(stdout);
                 printf("ERROR ");
-                printf(errno);
+                strerror(errno);
 
                 // No data available, continue polling
                 continue;
@@ -50,8 +50,8 @@ static void read_and_print_fd(int fd) {
             break;
         }
         printf("cycle");
-        fflush(stdout);
         fwrite(buffer, 1, bytes_read, stdout);
+        fflush(stdout);
     }
 }
 
@@ -64,23 +64,24 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 		__u64 timestamp;
 		int fd;
         int pid;
+        char data[5];
 	} *e = data;
 
 	char path[64];
 	char buf[1024];
 
-	printf("Received event: PID = %d, FD = %d, Timestamp = %llu\n", e->pid, e->fd, e->timestamp);
+	printf("Received event: PID = %d, FD = %d, Timestamp = %llu, message %s\n", e->pid, e->fd, e->timestamp, e->data);
 
     snprintf(path, sizeof(path), "/proc/%d/fd/%d", e->pid, e->fd);
 
-	int fd = open_fd(e->pid, e->fd);
-    if (fd < 0) {
-        fprintf(stderr, "Failed to open FD %d for PID %d\n", e->fd, e->pid);
-        return;
-    }
+//	int fd = open_fd(e->pid, e->fd);
+//    if (fd < 0) {
+//        fprintf(stderr, "Failed to open FD %d for PID %d\n", e->fd, e->pid);
+//        return;
+//    }
     printf("Successfully opened FD %d\n", fd);
-    read_and_print_fd(fd);
-    close(fd);
+//    read_and_print_fd(fd);
+//    close(fd);
 }
 
 int main(int argc, char **argv) {
