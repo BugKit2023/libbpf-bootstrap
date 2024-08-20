@@ -27,6 +27,9 @@ static void read_and_print_fd(int fd) {
         bytes_read = read(fd, buffer, sizeof(buffer));
         if (bytes_read < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                printf("ERROR ");
+                printf(errno);
+
                 // No data available, continue polling
                 continue;
             } else {
@@ -38,6 +41,7 @@ static void read_and_print_fd(int fd) {
             // End of file or file descriptor closed
             break;
         }
+        printf("cycle")
         fwrite(buffer, 1, bytes_read, stdout);
     }
 }
