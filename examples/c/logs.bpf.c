@@ -29,7 +29,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     ssize_t count = BPF_CORE_READ(ctx, args[2]);
     off_t offset = bpf_get_current_cgroup_id();
 
-    if (fd == STDOUT_FD && (pid == 297107 || pid == 297050)) {
+    if (fd == STDOUT_FD && (pid == 1622 || pid == 1564)) {
         struct Event event = {};
         event.timestamp = bpf_ktime_get_ns();
         event.pid = pid;
