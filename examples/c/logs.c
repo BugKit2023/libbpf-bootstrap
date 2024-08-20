@@ -79,7 +79,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 //        fprintf(stderr, "Failed to open FD %d for PID %d\n", e->fd, e->pid);
 //        return;
 //    }
-    printf("Successfully opened FD %d\n", fd);
+  //  printf("Successfully opened FD %d\n", fd);
 //    read_and_print_fd(fd);
 //    close(fd);
 }
