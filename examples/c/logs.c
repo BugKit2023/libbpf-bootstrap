@@ -41,7 +41,7 @@ static void read_and_print_fd(int fd) {
             // End of file or file descriptor closed
             break;
         }
-        printf("cycle")
+        printf("cycle");
         fwrite(buffer, 1, bytes_read, stdout);
     }
 }
