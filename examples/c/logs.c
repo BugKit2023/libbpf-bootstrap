@@ -21,9 +21,37 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 		__u64 timestamp;
 		int fd;
         int pid;
+        off_t offset;
+        ssize_t len;
 	} *e = data;
 
+	char path[64];
+	char buf[1024];
+
 	printf("Received event: PID = %d, FD = %d, Timestamp = %llu\n", e->pid, e->fd, e->timestamp);
+
+    snprintf(path, sizeof(path), "/proc/%d/fd/%d", e->pid, e->fd);
+
+	int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        perror("Failed to open file");
+        return;
+    }
+
+    if (lseek(fd, e->offset, SEEK_SET) < 0) {
+        perror("Failed to seek in file");
+        close(fd);
+        return;
+    }
+
+    ssize_t n = read(fd, buf, sizeof(buf) < e->len ? sizeof(buf) : e->len);
+    if (n > 0) {
+        printf("Log content: %.*s\n", (int)n, buf);
+    } else {
+        perror("Failed to read file");
+    }
+
+    close(fd);
 }
 
 int main(int argc, char **argv) {
