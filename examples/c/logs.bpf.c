@@ -34,7 +34,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         event.fd = fd;
 
         const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
-        int size = BPF_CORE_READ(ctx, args[2]);
+        unsigned int size = (unsigned int) BPF_CORE_READ(ctx, args[2]);
         bpf_trace_printk("Size %d\n", sizeof("Size %d\n"), size);
 
         if (size > MAX_LOG_SIZE) {
