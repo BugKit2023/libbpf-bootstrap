@@ -64,7 +64,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 		__u64 timestamp;
 		int fd;
         int pid;
-        char data[5];
+        char data[10];
 	} *e = data;
 
 	char path[64];

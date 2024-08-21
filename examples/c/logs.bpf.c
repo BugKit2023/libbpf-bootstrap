@@ -5,12 +5,13 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
+#define MAX_LOG_SIZE 10
 
 struct Event {
     u64 timestamp;
     int fd;
     int pid;
-    char data[5];
+    char data[10];
 };
 
 struct {
@@ -34,7 +35,11 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
 
         const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
         int size = BPF_CORE_READ(ctx, args[2]);
+        bpf_trace_printk("Size %d\n", sizeof("Size %d\n"), size);
 
+        if (size > MAX_LOG_SIZE) {
+            size = MAX_LOG_SIZE;
+        }
 
         if (buf && size > 0) {
            bpf_probe_read_user(event.data, size, buf);
