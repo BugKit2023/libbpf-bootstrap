@@ -5,7 +5,7 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
-#define MAX_LOG_SIZE 256
+#define MAX_LOG_SIZE 512
 
 struct Event {
     u64 timestamp;
@@ -13,6 +13,13 @@ struct Event {
     int pid;
     char data[MAX_LOG_SIZE];
 };
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct Event);
+} event_buffer SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
@@ -28,10 +35,24 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     int fd = BPF_CORE_READ(ctx, args[0]);
 
     if (fd == STDOUT_FD && (pid == 104926 || pid == 124693)) {
-        struct Event event = {};
-        event.timestamp = bpf_ktime_get_ns();
-        event.pid = pid;
-        event.fd = fd;
+        u32 key = 0;
+        struct Event *event = bpf_map_lookup_elem(&event_buffer, &key);
+//        struct Event event = {};
+//        event.timestamp = bpf_ktime_get_ns();
+//        event.pid = pid;
+//        event.fd = fd;
+        if (!event) {
+            struct Event init_event = {};
+            bpf_map_update_elem(&event_buffer, &key, &init_event, BPF_ANY);
+            event = bpf_map_lookup_elem(&event_buffer, &key);
+            if (!event) {
+                return 0;  // Если по какой-то причине всё ещё нет данных, выходим
+            }
+        }
+
+        event->timestamp = bpf_ktime_get_ns();
+        event->pid = pid;
+        event->fd = fd;
 
         const char *buf = (const char *)BPF_CORE_READ(ctx, args[1]);
         unsigned int size = (unsigned int) BPF_CORE_READ(ctx, args[2]);
@@ -42,7 +63,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         }
 
         if (buf && size > 0) {
-           bpf_probe_read_user(event.data, size, buf);
+           bpf_probe_read_user(event->data, size, buf);
         }
 
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
