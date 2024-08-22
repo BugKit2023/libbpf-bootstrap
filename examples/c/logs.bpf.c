@@ -38,12 +38,7 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         u32 key = 0;
         struct Event *event = bpf_map_lookup_elem(&event_buffer, &key);
         if (!event) {
-            struct Event init_event = {};
-            bpf_map_update_elem(&event_buffer, &key, &init_event, BPF_ANY);
-            event = bpf_map_lookup_elem(&event_buffer, &key);
-            if (!event) {
-                return 0;  // Если по какой-то причине всё ещё нет данных, выходим
-            }
+            return 0;  // Если по какой-то причине не удается найти элемент в карте, выходим
         }
 
         event->timestamp = bpf_ktime_get_ns();
