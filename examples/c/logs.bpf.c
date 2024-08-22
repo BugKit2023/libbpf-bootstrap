@@ -5,7 +5,7 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
-#define MAX_LOG_SIZE 512
+#define MAX_LOG_SIZE 256
 
 struct Event {
     u64 timestamp;
@@ -37,10 +37,6 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
     if (fd == STDOUT_FD && (pid == 104926 || pid == 124693)) {
         u32 key = 0;
         struct Event *event = bpf_map_lookup_elem(&event_buffer, &key);
-//        struct Event event = {};
-//        event.timestamp = bpf_ktime_get_ns();
-//        event.pid = pid;
-//        event.fd = fd;
         if (!event) {
             struct Event init_event = {};
             bpf_map_update_elem(&event_buffer, &key, &init_event, BPF_ANY);
@@ -67,8 +63,6 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
         }
 
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event, sizeof(*event));
-
-        bpf_trace_printk("Write syscall detected on stdout by PID %d\n", sizeof("Write syscall detected on stdout by PID %d\n"), pid);
     }
     return 0;
 }
