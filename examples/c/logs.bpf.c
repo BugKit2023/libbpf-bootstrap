@@ -5,13 +5,13 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
-#define MAX_LOG_SIZE 10
+#define MAX_LOG_SIZE 512
 
 struct Event {
     u64 timestamp;
     int fd;
     int pid;
-    char data[10];
+    char data[MAX_LOG_SIZE];
 };
 
 struct {
