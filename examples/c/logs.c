@@ -13,48 +13,6 @@
 #define BUF_SIZE 4096
 #define POLL_TIMEOUT 5000
 
-static int open_fd(int pid, int fd) {
-    char path[256];
-    snprintf(path, sizeof(path), "/proc/%d/fd/%d", pid, fd);
-    return open(path, O_RDONLY | O_NONBLOCK);
-}
-
-static void read_and_print_fd(int fd) {
-    char buffer[4096];
-    ssize_t bytes_read;
-
-    while (1) {
-        printf("1111");
-        fflush(stdout);
-        bytes_read = read(fd, buffer, sizeof(buffer));
-        if (bytes_read < 0) {
-            printf("2222");
-            fflush(stdout);
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                printf("33333");
-                fflush(stdout);
-                printf("ERROR ");
-                strerror(errno);
-
-                // No data available, continue polling
-                continue;
-            } else {
-                perror("Error reading from file descriptor");
-                break;
-            }
-        }
-        if (bytes_read == 0) {
-            printf("4444");
-            fflush(stdout);
-            // End of file or file descriptor closed
-            break;
-        }
-        printf("cycle");
-        fwrite(buffer, 1, bytes_read, stdout);
-        fflush(stdout);
-    }
-}
-
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
     return vfprintf(stderr, format, args);
 }
@@ -73,15 +31,6 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 	printf("Received event: PID = %d, FD = %d, Timestamp = %llu, message %s\n", e->pid, e->fd, e->timestamp, e->data);
 
     snprintf(path, sizeof(path), "/proc/%d/fd/%d", e->pid, e->fd);
-
-//	int fd = open_fd(e->pid, e->fd);
-//    if (fd < 0) {
-//        fprintf(stderr, "Failed to open FD %d for PID %d\n", e->fd, e->pid);
-//        return;
-//    }
-  //  printf("Successfully opened FD %d\n", fd);
-//    read_and_print_fd(fd);
-//    close(fd);
 }
 
 int main(int argc, char **argv) {

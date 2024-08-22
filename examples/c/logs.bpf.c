@@ -5,7 +5,7 @@
 #include <bpf/bpf_core_read.h>
 
 #define STDOUT_FD 1
-#define MAX_LOG_SIZE 512
+#define MAX_LOG_SIZE 256
 
 struct Event {
     u64 timestamp;
