@@ -66,7 +66,8 @@ int trace_write(struct trace_event_raw_sys_enter *ctx) {
            bpf_probe_read_user(event->data, size, buf);
         }
 
-        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event, sizeof(*event));
+
         bpf_trace_printk("Write syscall detected on stdout by PID %d\n", sizeof("Write syscall detected on stdout by PID %d\n"), pid);
     }
     return 0;
