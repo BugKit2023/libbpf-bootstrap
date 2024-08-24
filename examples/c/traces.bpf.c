@@ -24,14 +24,20 @@ struct {
 } events SEC(".maps");
 
 static __always_inline int parse_http_request(struct trace_event_t *event, const char *data, int data_len) {
+    bpf_printk("Parsing HTTP request, data length: %d\n", sizeof("Parsing HTTP request, data length: %d\n"), data_len);
+    bpf_printk("Data content: %.20s\n", sizeof("Data content: %.20s\n"), data);
+
     if (data_len < 4)
         return 0;
 
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T') {
         event->http_method = 1;  // GET
+        bpf_printk("GET request detected\n", sizeof("GET request detected\n"));
     } else if (data[0] == 'P' && data[1] == 'O' && data[2] == 'S' && data[3] == 'T') {
         event->http_method = 2;  // POST
+        bpf_printk("POST request detected\n", sizeof("POST request detected\n"));
     } else {
+        bpf_printk("Unknown method or not HTTP request\n", sizeof("Unknown method or not HTTP request\n"));
         return 0;  // Not GET or POST
     }
 
@@ -42,6 +48,9 @@ static __always_inline int parse_http_request(struct trace_event_t *event, const
         event->uri[uri_index++] = data[i++];
     }
     event->uri[uri_index] = '\0';  // Null-terminate the URI
+
+    bpf_printk("Parsed URI: %s\n", sizeof("Parsed URI: %s\n"), event->uri);
+
     return 1;
 }
 
@@ -100,8 +109,10 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     bpf_printk("tcp_sendmsg: Data length: %d\n", sizeof("tcp_sendmsg: Data length: %d\n"), len);
     bpf_printk("tcp_sendmsg: Data content: %s\n", sizeof("tcp_sendmsg: Data content: %s\n"), data);
-    if (!parse_http_request(&event, data, iov.iov_len))
+    if (!parse_http_request(&event, data, iov.iov_len)) {
+        bpf_printk("tcp_sendmsg: HTTP request not parsed\n", sizeof("tcp_sendmsg: HTTP request not parsed\n"));
         return 0;
+    }
 
     bpf_printk("tcp_sendmsg: 3333\n");
     // Получение IP-адресов
