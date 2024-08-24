@@ -75,11 +75,11 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iov_iter *iter = BPF_CORE_READ(msg, msg_iter);
+    struct iov_iter iter = BPF_CORE_READ(msg, msg_iter);
     struct iovec iov;
 
-    if (iter && BPF_CORE_READ(iter, iov)) {
-        bpf_probe_read_user(&iov, sizeof(iov), BPF_CORE_READ(iter, iov));
+    if (BPF_CORE_READ(&iter, iov)) {
+        bpf_probe_read_user(&iov, sizeof(iov), &iter.iov);
         char data[128];
         bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
@@ -110,11 +110,11 @@ int kprobe_tcp_recvmsg(struct pt_regs *ctx) {
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iov_iter *iter = BPF_CORE_READ(msg, msg_iter);
+    struct iov_iter iter = BPF_CORE_READ(msg, msg_iter);
     struct iovec iov;
 
-    if (iter && BPF_CORE_READ(iter, iov)) {
-        bpf_probe_read_user(&iov, sizeof(iov), BPF_CORE_READ(iter, iov));
+    if (BPF_CORE_READ(&iter, iov)) {
+        bpf_probe_read_user(&iov, sizeof(iov), &iter.iov);
         char data[128];
         bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
