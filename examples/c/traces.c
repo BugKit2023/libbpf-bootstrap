@@ -47,6 +47,8 @@ int main(int argc, char **argv)
 {
 	struct traces_bpf *skel;
 	int err;
+	int perf_fd, ret = 0;
+    struct perf_buffer *pb;
 
 	/* Set up libbpf errors and debug info callback */
 	libbpf_set_print(libbpf_print_fn);
