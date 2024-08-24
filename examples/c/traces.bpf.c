@@ -37,11 +37,11 @@ static __always_inline int parse_http_request(struct trace_event_t *event, const
 
     // Parse URI (assuming it starts after method and a space)
     int i = 4;
-    while (i < data_len && data[i] != ' ') {
-        event->uri[i-4] = data[i];
-        i++;
+    int uri_index = 0;
+    while (i < data_len && data[i] != ' ' && uri_index < sizeof(event->uri) - 1) {
+        event->uri[uri_index++] = data[i++];
     }
-    event->uri[i-4] = '\0';  // Null-terminate the URI
+    event->uri[uri_index] = '\0';  // Null-terminate the URI
     return 1;
 }
 
@@ -75,27 +75,27 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iov_iter iter = BPF_CORE_READ(msg, msg_iter);
+    struct iov_iter iter;
     struct iovec iov;
 
-    if (BPF_CORE_READ(&iter, iov)) {
-        bpf_probe_read_user(&iov, sizeof(iov), &iter.iov);
-        char data[128];
-        bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
+    BPF_CORE_READ_INTO(&iter, msg, msg_iter);
+    BPF_CORE_READ_INTO(&iov, &iter, iov);
 
-        if (!parse_http_request(&event, data, iov.iov_len))
-            return 0;
+    char data[128];
+    bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
-        // Получение IP-адресов
-        event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-        event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    if (!parse_http_request(&event, data, iov.iov_len))
+        return 0;
 
-        // Получение портов
-        event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-        event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    // Получение IP-адресов
+    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
 
-        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-    }
+    // Получение портов
+    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
+
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
     return 0;
 }
@@ -110,26 +110,26 @@ int kprobe_tcp_recvmsg(struct pt_regs *ctx) {
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iov_iter iter = BPF_CORE_READ(msg, msg_iter);
+    struct iov_iter iter;
     struct iovec iov;
 
-    if (BPF_CORE_READ(&iter, iov)) {
-        bpf_probe_read_user(&iov, sizeof(iov), &iter.iov);
-        char data[128];
-        bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
+    BPF_CORE_READ_INTO(&iter, msg, msg_iter);
+    BPF_CORE_READ_INTO(&iov, &iter, iov);
 
-        if (!parse_http_response(&event, data, iov.iov_len))
-            return 0;
+    char data[128];
+    bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
-        // Получение IP-адресов и портов
-        event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-        event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
-        event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-        event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    if (!parse_http_response(&event, data, iov.iov_len))
+        return 0;
 
-        // Отправка события в пространство пользователя
-        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-    }
+    // Получение IP-адресов и портов
+    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
+
+    // Отправка события в пространство пользователя
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
     return 0;
 }
