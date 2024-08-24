@@ -105,11 +105,15 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     char data[128];
     int len = iov.iov_len > sizeof(data) ? sizeof(data) : iov.iov_len;
-    bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
+    long ret = bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
+    if (ret < 0) {
+        bpf_printk("bpf_probe_read_user failed: %ld\n", sizeof("bpf_probe_read_user failed: %ld\n"), ret);
+        return 0;
+    }
 
     bpf_printk("tcp_sendmsg: Data length: %d\n", sizeof("tcp_sendmsg: Data length: %d\n"), len);
     bpf_printk("tcp_sendmsg: Data content: %s\n", sizeof("tcp_sendmsg: Data content: %s\n"), data);
-    if (!parse_http_request(&event, data, iov.iov_len)) {
+    if (!parse_http_request(&event, data, len)) {
         bpf_printk("tcp_sendmsg: HTTP request not parsed\n", sizeof("tcp_sendmsg: HTTP request not parsed\n"));
         return 0;
     }
