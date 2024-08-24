@@ -87,11 +87,13 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     if (!parse_http_request(&event, data, iov.iov_len))
         return 0;
 
-    struct inet_sock *inet = (struct inet_sock *)sk;
-    event.saddr = BPF_CORE_READ(inet, inet_saddr);
-    event.daddr = BPF_CORE_READ(inet, inet_daddr);
-    event.sport = BPF_CORE_READ(inet, inet_sport);
-    event.dport = BPF_CORE_READ(inet, inet_dport);
+    // Получение IP-адресов
+    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+
+    // Получение портов
+    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    event.dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
