@@ -25,7 +25,6 @@ int main(int argc, char **argv)
 	}
 
 	/* ensure BPF program only handles write() syscalls from our process */
-	skel->bss->my_pid = getpid();
 
 	/* Load & verify BPF programs */
 	err = traces_bpf__load(skel);
