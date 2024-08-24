@@ -74,6 +74,10 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
 
+    if (event.pid != 312922) {
+        return 0;
+    }
+
     bpf_printk("tcp_sendmsg: 1111\n");
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
