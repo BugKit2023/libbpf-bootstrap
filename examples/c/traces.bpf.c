@@ -97,30 +97,31 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     char data[128] = {};
     __u32 len = 0;
+    int max_iterations = 10;  // Ограничение на количество итераций
 
-    while (len < sizeof(data) && iter.count > 0) {
+    while (len < sizeof(data) && iter.count > 0 && max_iterations-- > 0) {
         BPF_CORE_READ_INTO(&iov, &iter, iov);
 
-        // Ensure segment_len is safe and bounded
         __u32 segment_len = iov.iov_len;
         if (segment_len > (sizeof(data) - len)) {
             segment_len = sizeof(data) - len;
         }
 
-        // Apply safe bound to segment_len
-        segment_len &= 0x7F;  // Limiting the value to a safe range (127 max)
-
         if (segment_len > 0) {
             long ret = bpf_probe_read_user(&data[len], segment_len, iov.iov_base);
             if (ret < 0) {
                 bpf_printk("bpf_probe_read_user failed: %ld\n", ret);
-                return 0;
+                break;
             }
             len += segment_len;
         }
 
         iter.iov_offset += segment_len;
         iter.count -= segment_len;
+    }
+
+    if (max_iterations <= 0) {
+        bpf_printk("Max iterations reached, breaking the loop.\n");
     }
 
     bpf_printk("tcp_sendmsg: Data length: %d\n", len);
