@@ -93,7 +93,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     // Получение портов
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-    event.dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
