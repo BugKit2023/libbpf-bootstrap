@@ -86,6 +86,8 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     char data[128];
     bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
+    bpf_printk("tcp_sendmsg: Data length: %d\n", sizeof("tcp_sendmsg: Data length: %d\n"), len);
+    bpf_printk("tcp_sendmsg: Data content: %s\n", sizeof("tcp_sendmsg: Data content: %s\n"), data);
     if (!parse_http_request(&event, data, iov.iov_len))
         return 0;
 
