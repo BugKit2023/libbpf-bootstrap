@@ -96,6 +96,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+    bpf_printk("Received data length: %d\n", iov.iov_len);
 
     return 0;
 }
