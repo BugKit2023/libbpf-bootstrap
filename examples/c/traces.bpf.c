@@ -76,19 +76,23 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iovec *iov = msg->msg_iov;
+    struct iov_iter *iter = &msg->msg_iter;
+    struct iovec iov;
 
     char data[128];
-    bpf_probe_read_user(&data, sizeof(data), iov->iov_base);
+    if (iter->iov) {
+        bpf_probe_read_user(&iov, sizeof(iov), iter->iov);
+        bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
+    }
 
-    if (!parse_http_request(&event, data, iov->iov_len))
+    if (!parse_http_request(&event, data, iov.iov_len))
         return 0;
 
     struct inet_sock *inet = (struct inet_sock *)sk;
-    event.saddr = inet->inet_saddr;
-    event.daddr = inet->inet_daddr;
-    event.sport = inet->inet_sport;
-    event.dport = inet->inet_dport;
+    event.saddr = BPF_CORE_READ(inet, inet_saddr);
+    event.daddr = BPF_CORE_READ(sk, sk_daddr);
+    event.sport = BPF_CORE_READ(sk, sk_num);
+    event.dport = BPF_CORE_READ(inet, inet_dport);
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
