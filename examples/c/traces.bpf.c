@@ -83,7 +83,9 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
     BPF_CORE_READ_INTO(&iov, &iter, iov);
     bpf_printk("tcp_sendmsg: 2222\n");
+
     char data[128];
+    int len = iov.iov_len > sizeof(data) ? sizeof(data) : iov.iov_len;
     bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
     bpf_printk("tcp_sendmsg: Data length: %d\n", sizeof("tcp_sendmsg: Data length: %d\n"), len);
