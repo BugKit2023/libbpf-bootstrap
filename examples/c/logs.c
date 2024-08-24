@@ -25,12 +25,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
         char data[512];
 	} *e = data;
 
-	char path[64];
-	char buf[1024];
-
 	printf("Received event: PID = %d, FD = %d, Timestamp = %llu, message %s\n", e->pid, e->fd, e->timestamp, e->data);
-
-    snprintf(path, sizeof(path), "/proc/%d/fd/%d", e->pid, e->fd);
 }
 
 int main(int argc, char **argv) {
