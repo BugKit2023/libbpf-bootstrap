@@ -67,12 +67,14 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("kprobe/tcp_sendmsg")
 int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
+    bpf_printk("tcp_sendmsg: Entered\n");
     struct trace_event_t event = {};
 
     event.pid = bpf_get_current_pid_tgid() >> 32;
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
 
+    bpf_printk("tcp_sendmsg: 1111\n");
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
     struct iov_iter iter;
@@ -80,13 +82,14 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
     BPF_CORE_READ_INTO(&iov, &iter, iov);
-
+    bpf_printk("tcp_sendmsg: 2222\n");
     char data[128];
     bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
 
     if (!parse_http_request(&event, data, iov.iov_len))
         return 0;
 
+    bpf_printk("tcp_sendmsg: 3333\n");
     // Получение IP-адресов
     event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
@@ -95,6 +98,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
     event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
 
+    bpf_printk("tcp_sendmsg: 4444\n");
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     bpf_printk("Received data length: %d\n", iov.iov_len);
 
