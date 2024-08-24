@@ -99,3 +99,39 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     return 0;
 }
+
+SEC("kprobe/tcp_recvmsg")
+int kprobe_tcp_recvmsg(struct pt_regs *ctx) {
+    struct trace_event_t event = {};
+
+    event.pid = bpf_get_current_pid_tgid() >> 32;
+    event.tid = bpf_get_current_pid_tgid();
+    event.end_ts = bpf_ktime_get_ns();
+
+    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+    struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
+    struct iov_iter *iter = &msg->msg_iter;
+    struct iovec iov;
+
+    // Получение IP-адресов и портов
+    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
+
+    // Чтение данных из буфера
+    if (iter->iov) {
+        bpf_probe_read_user(&iov, sizeof(iov), iter->iov);
+        char data[128];
+        bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
+
+        // Извлечение HTTP-кода состояния из данных ответа
+        if (!parse_http_response(&event, data, iov.iov_len))
+            return 0;
+
+        // Отправка события в пространство пользователя
+        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+    }
+
+    return 0;
+}
