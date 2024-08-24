@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
@@ -90,8 +89,8 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     struct inet_sock *inet = (struct inet_sock *)sk;
     event.saddr = BPF_CORE_READ(inet, inet_saddr);
-    event.daddr = BPF_CORE_READ(sk, sk_daddr);
-    event.sport = BPF_CORE_READ(sk, sk_num);
+    event.daddr = BPF_CORE_READ(inet, inet_daddr);
+    event.sport = BPF_CORE_READ(inet, inet_sport);
     event.dport = BPF_CORE_READ(inet, inet_dport);
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
