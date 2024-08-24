@@ -82,6 +82,13 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
+	pb = perf_buffer__new(perf_fd, 8, print_bpf_output, NULL, NULL, NULL);
+    ret = libbpf_get_error(pb);
+    if (ret) {
+    	printf("failed to setup perf_buffer: %d\n", ret);
+    	return 1;
+    }
+
 	printf("Attempting to read from perf_fd: %d\n", perf_fd);
 	while (1) {
        ret = perf_buffer__poll(pb, 1000);
