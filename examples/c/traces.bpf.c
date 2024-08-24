@@ -24,32 +24,31 @@ struct {
 } events SEC(".maps");
 
 static __always_inline int parse_http_request(struct trace_event_t *event, const char *data, int data_len) {
-    bpf_printk("Parsing HTTP request, data length: %d\n", sizeof("Parsing HTTP request, data length: %d\n"), data_len);
-    bpf_printk("Data content: %.20s\n", sizeof("Data content: %.20s\n"), data);
+    bpf_printk("Parsing HTTP request, data length: %d\n", data_len);
+    bpf_printk("Data content: %.20s\n", data);
 
     if (data_len < 4)
         return 0;
 
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T') {
         event->http_method = 1;  // GET
-        bpf_printk("GET request detected\n", sizeof("GET request detected\n"));
+        bpf_printk("GET request detected\n");
     } else if (data[0] == 'P' && data[1] == 'O' && data[2] == 'S' && data[3] == 'T') {
         event->http_method = 2;  // POST
-        bpf_printk("POST request detected\n", sizeof("POST request detected\n"));
+        bpf_printk("POST request detected\n");
     } else {
-        bpf_printk("Unknown method or not HTTP request\n", sizeof("Unknown method or not HTTP request\n"));
+        bpf_printk("Unknown method or not HTTP request\n");
         return 0;  // Not GET or POST
     }
 
-    // Parse URI (assuming it starts after method and a space)
     int i = 4;
     int uri_index = 0;
     while (i < data_len && data[i] != ' ' && uri_index < sizeof(event->uri) - 1) {
         event->uri[uri_index++] = data[i++];
     }
-    event->uri[uri_index] = '\0';  // Null-terminate the URI
+    event->uri[uri_index] = '\0';
 
-    bpf_printk("Parsed URI: %s\n", sizeof("Parsed URI: %s\n"), event->uri);
+    bpf_printk("Parsed URI: %s\n", event->uri);
 
     return 1;
 }
@@ -76,60 +75,62 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("kprobe/tcp_sendmsg")
 int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
-    bpf_printk("tcp_sendmsg: Entered\n");
     struct trace_event_t event = {};
-
     char comm[16];
 
-    // Получаем имя процесса
     bpf_get_current_comm(&comm, sizeof(comm));
 
-    // Проверяем, является ли процесс "curl"
     if (comm[0] != 'c' || comm[1] != 'u' || comm[2] != 'r' || comm[3] != 'l' || comm[4] != '\0') {
-        return 0;  // Игнорируем запросы от других процессов
+        return 0;  // Ignore non-curl requests
     }
 
     event.pid = bpf_get_current_pid_tgid() >> 32;
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
 
-    bpf_printk("tcp_sendmsg: 1111\n");
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
     struct iov_iter iter;
     struct iovec iov;
 
+    // Read the iov_iter structure
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
-    BPF_CORE_READ_INTO(&iov, &iter, iov);
-    bpf_printk("tcp_sendmsg: 2222\n");
 
-    char data[128];
-    int len = iov.iov_len > sizeof(data) ? sizeof(data) : iov.iov_len;
-    long ret = bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
-    if (ret < 0) {
-        bpf_printk("bpf_probe_read_user failed: %ld\n", sizeof("bpf_probe_read_user failed: %ld\n"), ret);
-        return 0;
+    char data[128] = {};
+    int len = 0;
+
+    // Iterate over each iovec in the iov_iter and read data
+    while (len < sizeof(data) && iter.count > 0) {
+        BPF_CORE_READ_INTO(&iov, &iter, iov);
+
+        int segment_len = iov.iov_len > (sizeof(data) - len) ? (sizeof(data) - len) : iov.iov_len;
+        if (segment_len > 0) {
+            long ret = bpf_probe_read_user(&data[len], segment_len, iov.iov_base);
+            if (ret < 0) {
+                bpf_printk("bpf_probe_read_user failed: %ld\n", ret);
+                return 0;
+            }
+            len += segment_len;
+        }
+
+        iter.iov_offset += segment_len;
+        iter.count -= segment_len;
     }
 
-    bpf_printk("tcp_sendmsg: Data length: %d\n", sizeof("tcp_sendmsg: Data length: %d\n"), len);
-    bpf_printk("tcp_sendmsg: Data content: %s\n", sizeof("tcp_sendmsg: Data content: %s\n"), data);
+    bpf_printk("tcp_sendmsg: Data length: %d\n", len);
+    bpf_printk("tcp_sendmsg: Data content: %.20s\n", data);
+
     if (!parse_http_request(&event, data, len)) {
-        bpf_printk("tcp_sendmsg: HTTP request not parsed\n", sizeof("tcp_sendmsg: HTTP request not parsed\n"));
+        bpf_printk("tcp_sendmsg: HTTP request not parsed\n");
         return 0;
     }
 
-    bpf_printk("tcp_sendmsg: 3333\n");
-    // Получение IP-адресов
     event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
-
-    // Получение портов
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
     event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
 
-    bpf_printk("tcp_sendmsg: 4444\n");
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-    bpf_printk("Received data length: %d\n", iov.iov_len);
 
     return 0;
 }
