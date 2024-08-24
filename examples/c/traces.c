@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	perf_fd = traces_map__fd(skel->maps.events);
+	perf_fd = bpf_map__fd(skel->maps.events);
     if (perf_fd < 0) {
         fprintf(stderr, "Failed to get perf event map FD\n");
         goto cleanup;
