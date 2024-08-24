@@ -70,13 +70,19 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     bpf_printk("tcp_sendmsg: Entered\n");
     struct trace_event_t event = {};
 
+    char comm[16];
+
+    // Получаем имя процесса
+    bpf_get_current_comm(&comm, sizeof(comm));
+
+    // Проверяем, является ли процесс "curl"
+    if (comm[0] != 'c' || comm[1] != 'u' || comm[2] != 'r' || comm[3] != 'l' || comm[4] != '\0') {
+        return 0;  // Игнорируем запросы от других процессов
+    }
+
     event.pid = bpf_get_current_pid_tgid() >> 32;
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
-
-    if (event.pid != 312922) {
-        return 0;
-    }
 
     bpf_printk("tcp_sendmsg: 1111\n");
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
