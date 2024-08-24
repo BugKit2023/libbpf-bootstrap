@@ -103,6 +103,10 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
         BPF_CORE_READ_INTO(&iov, &iter, iov);
 
         __u32 segment_len = iov.iov_len;
+
+        // Ограничение segment_len для безопасности
+        segment_len = segment_len & 127;
+
         if (segment_len > (sizeof(data) - len)) {
             segment_len = sizeof(data) - len;
         }
@@ -141,6 +145,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     return 0;
 }
+
 
 SEC("kprobe/tcp_recvmsg")
 int kprobe_tcp_recvmsg(struct pt_regs *ctx) {
