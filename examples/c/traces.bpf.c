@@ -95,51 +95,53 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
 
-    char data[128] = {};
-    __u32 len = 0;
-    int max_iterations = 10;  // Ограничение на количество итераций
-
-    while (len < sizeof(data) && iter.count > 0 && max_iterations-- > 0) {
-        BPF_CORE_READ_INTO(&iov, &iter, iov);
-
-        __u32 segment_len = iov.iov_len;
-
-        // Ограничение segment_len для безопасности
-        segment_len = segment_len & 127;
-
-        if (segment_len > (sizeof(data) - len)) {
-            segment_len = sizeof(data) - len;
-        }
-
-        if (segment_len > 0) {
-            long ret = bpf_probe_read_user(&data[len], segment_len, iov.iov_base);
-            if (ret < 0) {
-                bpf_printk("bpf_probe_read_user failed: %ld\n", ret);
-                break;
-            }
-            len += segment_len;
-        }
-
-        iter.iov_offset += segment_len;
-        iter.count -= segment_len;
-    }
-
-    if (max_iterations <= 0) {
-        bpf_printk("Max iterations reached, breaking the loop.\n");
-    }
-
-    bpf_printk("tcp_sendmsg: Data length: %d\n", len);
-    bpf_printk("tcp_sendmsg: Data content: %.20s\n", data);
-
-    if (!parse_http_request(&event, data, len)) {
-        bpf_printk("tcp_sendmsg: HTTP request not parsed\n");
-        return 0;
-    }
+//    char data[128] = {};
+//    __u32 len = 0;
+//    int max_iterations = 10;  // Ограничение на количество итераций
+//
+//    while (len < sizeof(data) && iter.count > 0 && max_iterations-- > 0) {
+//        BPF_CORE_READ_INTO(&iov, &iter, iov);
+//
+//        __u32 segment_len = iov.iov_len;
+//
+//        // Ограничение segment_len для безопасности
+//        segment_len = segment_len & 127;
+//
+//        if (segment_len > (sizeof(data) - len)) {
+//            segment_len = sizeof(data) - len;
+//        }
+//
+//        if (segment_len > 0) {
+//            long ret = bpf_probe_read_user(&data[len], segment_len, iov.iov_base);
+//            if (ret < 0) {
+//                bpf_printk("bpf_probe_read_user failed: %ld\n", ret);
+//                break;
+//            }
+//            len += segment_len;
+//        }
+//
+//        iter.iov_offset += segment_len;
+//        iter.count -= segment_len;
+//    }
+//
+//    if (max_iterations <= 0) {
+//        bpf_printk("Max iterations reached, breaking the loop.\n");
+//    }
+//
+//    bpf_printk("tcp_sendmsg: Data length: %d\n", len);
+//    bpf_printk("tcp_sendmsg: Data content: %.20s\n", data);
+//
+//    if (!parse_http_request(&event, data, len)) {
+//        bpf_printk("tcp_sendmsg: HTTP request not parsed\n");
+//        return 0;
+//    }
 
     event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
     event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    event.http_method = 1;
+    bpf_printk("tcp_sendmsg: Send message\n");
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
