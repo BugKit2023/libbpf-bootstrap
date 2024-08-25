@@ -17,7 +17,7 @@ struct trace_event_t {
     __u64 end_ts;
     __u32 http_method;
     __u32 status_code;
-    char uri[64];
+    char uri[MAX_BUF_SIZE];
 };
 
 struct {
@@ -39,14 +39,17 @@ int socket_handler(struct __sk_buff *skb) {
     __u32 payload_offset, payload_length;
     char line_buffer[7];
 
+    // Чтение протокола Ethernet (первые 2 байта протокола)
     bpf_skb_load_bytes(skb, 12, &proto, sizeof(proto));
     proto = bpf_ntohs(proto);
     if (proto != 0x0800) // ETH_P_IP
         return 0;
 
+    // Чтение длины IP-заголовка
     bpf_skb_load_bytes(skb, nhoff, &hdr_len, sizeof(hdr_len));
     hdr_len = (hdr_len & 0x0F) * 4;
 
+    // Чтение IP протокола
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, protocol), &ip_proto, sizeof(ip_proto));
     if (ip_proto != IPPROTO_TCP)
         return 0;
@@ -66,11 +69,15 @@ int socket_handler(struct __sk_buff *skb) {
     if (payload_length < 7)
         return 0;
 
+    // Чтение первой строки данных
     bpf_skb_load_bytes(skb, payload_offset, line_buffer, sizeof(line_buffer));
-    if (bpf_strncmp(line_buffer, 3, "GET") != 0 &&
-        bpf_strncmp(line_buffer, 4, "POST") != 0 &&
-        bpf_strncmp(line_buffer, 3, "PUT") != 0 &&
-        bpf_strncmp(line_buffer, 6, "DELETE") != 0) {
+
+    // Проверьте, что строка начинается с метода HTTP
+    if (line_buffer[0] == 'G' && line_buffer[1] == 'E' && line_buffer[2] == 'T') {
+        event.http_method = 1;
+    } else if (line_buffer[0] == 'P' && line_buffer[1] == 'O' && line_buffer[2] == 'S' && line_buffer[3] == 'T') {
+        event.http_method = 2;
+    } else {
         return 0;
     }
 
@@ -78,19 +85,16 @@ int socket_handler(struct __sk_buff *skb) {
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
 
+    // Чтение IP-адресов и портов
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, saddr), &event.saddr, sizeof(event.saddr));
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, daddr), &event.daddr, sizeof(event.daddr));
     bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, source), &event.sport, sizeof(event.sport));
     bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, dest), &event.dport, sizeof(event.dport));
 
-    if (bpf_strncmp(line_buffer, 3, "GET") == 0) {
-        event.http_method = 1;
-    } else if (bpf_strncmp(line_buffer, 4, "POST") == 0) {
-        event.http_method = 2;
-    }
-
+    // Чтение URI
     bpf_skb_load_bytes(skb, payload_offset + 4, event.uri, MAX_BUF_SIZE);
 
+    // Отправка события в perf-буфер
     bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     return 0;
 }
