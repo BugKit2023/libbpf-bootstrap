@@ -73,32 +73,16 @@ static __always_inline int parse_http_response(struct trace_event_t *event, cons
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-SEC("kprobe/http_parser_execute")
-int kprobe_http_request(struct pt_regs *ctx) {
-    struct trace_event_t event = {};
-    char method[8];
-    char uri[128];
+SEC("tracepoint/syscalls/sys_enter_sendmsg")
+int trace_http_request(struct trace_event_raw_sys_enter *ctx) {
+    char data[64];
+    bpf_probe_read_user_str(&data, sizeof(data), (void *)ctx->args[1]);
 
-    event.pid = bpf_get_current_pid_tgid() >> 32;
-    event.tid = bpf_get_current_pid_tgid();
-
-    // Получаем HTTP метод и URL
-    bpf_probe_read_user_str(&method, sizeof(method), (void *)PT_REGS_PARM1(ctx));
-    bpf_probe_read_user_str(&uri, sizeof(uri), (void *)PT_REGS_PARM2(ctx));
-
-    bpf_printk("HTTP method: %s\n", method);
-    bpf_printk("HTTP url: %s\n", uri);
-
-
-    // Сохраняем их в структуре события
-    if (method[0] == 'G' && method[1] == 'E' && method[2] == 'T') {
-        event.http_method = 1; // GET
-    } else if (method[0] == 'P' && method[1] == 'O' && method[2] == 'S' && method[3] == 'T') {
-        event.http_method = 2; // POST
+    bpf_printk("START HTTP Request: %s\n", data);
+    if (data[0] == 'G' || data[0] == 'P') {
+        bpf_printk("HTTP Request: %s\n", data);
     }
-    __builtin_memcpy(event.uri, uri, sizeof(event.uri));
 
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     return 0;
 }
 
