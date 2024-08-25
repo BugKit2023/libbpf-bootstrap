@@ -109,7 +109,13 @@ int trace_handle_http_request(struct pt_regs *ctx) {
     char url[MAX_DATA_SIZE] = {};
 
     // Получаем указатель на структуру HTTP-запроса
-    struct http_request_t *req = (struct http_request_t *)PT_REGS_PARM1(ctx);
+    struct http_request_t *req;
+    bpf_probe_read_user(&req, sizeof(req), (void *)&PT_REGS_PARM1(ctx));
+
+    // Проверка валидности указателя
+    if (req == NULL) {
+        return 0;
+    }
 
     // Извлекаем URL и копируем его в локальную строку
     bpf_probe_read_user(&url, MAX_DATA_SIZE, req->url);
