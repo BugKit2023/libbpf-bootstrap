@@ -101,11 +101,10 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     }
 
     char data[64];  // Увеличили буфер
-    int ret = bpf_probe_read_user(&data, sizeof(data) - 1, iov.iov_base);
+    int ret = bpf_probe_read_user_str(&data, sizeof(data), iov.iov_base);
     bpf_printk("tcp_sendmsg: User data, ret=%d\n", ret);
 
     bpf_printk("tcp_sendmsg: Data content %.20s\n", data);
-
 
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
         event.http_method = 1;  // GET
