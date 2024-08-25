@@ -73,6 +73,32 @@ static __always_inline int parse_http_response(struct trace_event_t *event, cons
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+SEC("kprobe/__http_do_proc_request")
+int kprobe_http_request(struct pt_regs *ctx) {
+    struct trace_event_t event = {};
+    char method[8];
+    char uri[128];
+
+    // Получаем HTTP метод и URL
+    bpf_probe_read_user_str(&method, sizeof(method), (void *)PT_REGS_PARM1(ctx));
+    bpf_probe_read_user_str(&uri, sizeof(uri), (void *)PT_REGS_PARM2(ctx));
+
+    bpf_printk("HTTP method: %s\n", method);
+    bpf_printk("HTTP url: %s\n", uri);
+
+
+    // Сохраняем их в структуре события
+    if (method[0] == 'G' && method[1] == 'E' && method[2] == 'T') {
+        event.http_method = 1; // GET
+    } else if (method[0] == 'P' && method[1] == 'O' && method[2] == 'S' && method[3] == 'T') {
+        event.http_method = 2; // POST
+    }
+    __builtin_memcpy(event.uri, uri, sizeof(event.uri));
+
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+    return 0;
+}
+
 SEC("kprobe/tcp_sendmsg")
 int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     struct trace_event_t event = {};
@@ -88,33 +114,6 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.start_ts = bpf_ktime_get_ns();
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
-    struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iovec iov;
-
-    // Чтение первого элемента iovec
-    int res = bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
-    if (res < 0) {
-        bpf_printk("tcp_sendmsg: Error reading iovec %d\n", res);
-        return 0;
-    }
-
-    char data[128];
-    int ret = bpf_probe_read_user(data, sizeof(data), iov.iov_base);
-    if (ret < 0) {
-        bpf_printk("tcp_sendmsg: Error reading user data %d\n", ret);
-        return 0;
-    }
-
-    // Парсинг HTTP метода и URI
-    if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
-        event.http_method = 1;  // GET
-        __builtin_memcpy(event.uri, data + 4, sizeof(event.uri));
-    } else if (data[0] == 'P' && data[1] == 'O' && data[2] == 'S' && data[3] == 'T') {
-        event.http_method = 2;  // POST
-        __builtin_memcpy(event.uri, data + 5, sizeof(event.uri));
-    } else {
-        return 0;  // Если метод не GET и не POST, выходим
-    }
 
     // Чтение адресов и портов
     event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
