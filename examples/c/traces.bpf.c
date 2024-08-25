@@ -100,7 +100,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("tracepoint/syscalls/sys_enter_recvfrom")
+SEC("tracepoint/syscalls/sys_enter_read")
 int trace_recvfrom(struct trace_event_raw_sys_enter* ctx) {
     struct trace_event_t event = {};
 
@@ -125,7 +125,7 @@ int trace_recvfrom(struct trace_event_raw_sys_enter* ctx) {
     event.type = 3;
     event.start_ts = bpf_ktime_get_ns();
     // Логируем размер и содержимое данных
-    bpf_printk("curl sys_enter_recvfrom() called: data_len=%d, data=%s\n", buf_size, event.data);
+    bpf_printk("curl sys_enter_read() called: data_len=%d, data=%s\n", buf_size, event.data);
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
 
