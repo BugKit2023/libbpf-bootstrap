@@ -95,6 +95,10 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
 
+    if (iter.iov->iov_base == NULL) {
+        return 0;
+    }
+
     char data[24];
     bpf_probe_read_user_str(&data, sizeof(data), iter.iov->iov_base);
 
