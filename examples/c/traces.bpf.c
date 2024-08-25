@@ -3,6 +3,9 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_endian.h>
+#include <linux/if_ether.h>   // Для определения ETH_HLEN
+#include <linux/ip.h>         // Для IP-заголовков
+#include <linux/tcp.h>        // Для TCP-заголовков
 
 #define MAX_BUF_SIZE 64
 #define __bpf_ntohs bpf_ntohs
