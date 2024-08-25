@@ -81,7 +81,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     bpf_get_current_comm(&comm, sizeof(comm));
 
     if (comm[0] != 'c' || comm[1] != 'u' || comm[2] != 'r' || comm[3] != 'l' || comm[4] != '\0') {
-        return 0;  // Ignore non-curl requests
+        return 0;
     }
 
     event.pid = bpf_get_current_pid_tgid() >> 32;
@@ -95,12 +95,24 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
 
+    char data[128];
+    bpf_probe_read_user_str(&data, sizeof(data), iter.iov->iov_base);
+
+    bpf_printk("tcp_sendmsg: Parse message\n");
+    bpf_printk("Data content: %.20s\n", data);
+    if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
+        event.http_method = 1;  // GET
+        __builtin_memcpy(event.url, data + 4, sizeof(event.url));
+    } else if (data[0] == 'P' && data[1] == 'O' && data[2] == 'S' && data[3] == 'T') {
+        event.http_method = 2;  // POST
+        __builtin_memcpy(event.url, data + 5, sizeof(event.url));
+    }
+
     event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
     event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
     event.http_method = 1;
-    bpf_printk("Source Port: %d, Destination Port: %d\n", event.sport, event.dport);
     bpf_printk("tcp_sendmsg: Send message\n");
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
