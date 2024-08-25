@@ -108,17 +108,25 @@ SEC("uprobe/handle_http_request")
 int trace_handle_http_request(struct pt_regs *ctx) {
     char url[MAX_DATA_SIZE] = {};
 
-    // Получаем указатель на структуру HTTP-запроса
-    struct http_request_t *req;
-    bpf_probe_read_user(&req, sizeof(req), (void *)&PT_REGS_PARM1(ctx));
+    // Получаем указатель на структуру HTTP-запроса напрямую
+    struct http_request_t *req = (struct http_request_t *)PT_REGS_PARM1(ctx);
 
     // Проверка валидности указателя
-    if (req == NULL) {
+    if (!req) {
         return 0;
     }
 
-    // Извлекаем URL и копируем его в локальную строку
-    bpf_probe_read_user(&url, MAX_DATA_SIZE, req->url);
+    // Извлекаем указатель на URL и копируем его в локальную строку
+    char *url_ptr;
+    bpf_probe_read_user(&url_ptr, sizeof(url_ptr), &req->url);
+
+    // Проверка валидности указателя URL
+    if (!url_ptr) {
+        return 0;
+    }
+
+    // Чтение самого URL
+    bpf_probe_read_user(&url, MAX_DATA_SIZE, url_ptr);
 
     // Логируем URL
     bpf_printk("Received HTTP request: URL=%s\n", url);
