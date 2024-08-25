@@ -28,6 +28,12 @@ struct {
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+SEC("tracepoint/syscalls/sys_enter_sendto")
+int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
+    bpf_printk("sendto() called\n");
+    return 0;
+}
+
 SEC("kprobe/tcp_sendmsg")
 int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     struct trace_event_t event = {};
