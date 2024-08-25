@@ -2,6 +2,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <bpf/bpf_endian.h>
+
+#define MAX_BUF_SIZE 64
+#define __bpf_ntohs bpf_ntohs
 
 struct trace_event_t {
     __u32 pid;
