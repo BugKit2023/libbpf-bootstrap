@@ -104,26 +104,19 @@ SEC("kprobe/tcp_recvmsg")
 int trace_tcp_recvmsg(struct pt_regs *ctx) {
     struct trace_event_t event = {};
 
-    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
-    struct inet_sock *inet = inet_sk(sk);
-
-    // Извлекаем IP-адреса и порты
-    event.saddr = inet->inet_saddr;
-    event.daddr = inet->inet_daddr;
-    event.sport = ntohs(inet->inet_sport);
-    event.dport = ntohs(inet->inet_dport);
-
-    // Получаем PID и TID
     event.pid = bpf_get_current_pid_tgid() >> 32;
     event.tid = bpf_get_current_pid_tgid();
-
-    // Записываем тип события (1 для отправки, 2 для получения)
-    event.type = 3;
-
-    // Получаем текущий временной штамп
+    event.type = 4;
     event.start_ts = bpf_ktime_get_ns();
 
-    // Отправляем событие в perf buffer
+    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+
+    // Чтение адресов и портов
+    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
+
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
     return 0;
