@@ -104,32 +104,28 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("uprobe/handle_http_request")
-int trace_handle_http_request(struct pt_regs *ctx) {
-    char url[MAX_DATA_SIZE] = {};
+SEC("tracepoint/syscalls/sys_enter_recvfrom")
+int trace_recvfrom(struct trace_event_raw_sys_enter *ctx) {
+    char data[MAX_DATA_SIZE] = {};
 
-    // Получаем указатель на структуру HTTP-запроса напрямую
-    struct http_request_t *req = (struct http_request_t *)PT_REGS_PARM1(ctx);
+    // Получаем указатель на буфер данных
+    void *buf = (void *)ctx->args[1];
+    unsigned int buf_size = (unsigned int) ctx->args[2];
 
-    // Проверка валидности указателя
-    if (!req) {
-        return 0;
+    // Ограничиваем размер данных для копирования, чтобы избежать переполнения буфера
+    if (buf_size > MAX_DATA_SIZE) {
+        buf_size = MAX_DATA_SIZE;
     }
 
-    // Извлекаем указатель на URL и копируем его в локальную строку
-    char *url_ptr;
-    bpf_probe_read_user(&url_ptr, sizeof(url_ptr), &req->url);
+    // Читаем данные из пользовательского пространства
+    bpf_probe_read_user(&data, buf_size, buf);
+    bpf_printk("Detected HTTP request: %s\n", data);
 
-    // Проверка валидности указателя URL
-    if (!url_ptr) {
-        return 0;
+    // Пример простейшей фильтрации HTTP GET-запроса
+    if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T') {
+        bpf_printk("Detected HTTP GET request: %s\n", data);
+        // Логика для извлечения URL из строки data
     }
-
-    // Чтение самого URL
-    bpf_probe_read_user(&url, MAX_DATA_SIZE, url_ptr);
-
-    // Логируем URL
-    bpf_printk("Received HTTP request: URL=%s\n", url);
 
     return 0;
 }
