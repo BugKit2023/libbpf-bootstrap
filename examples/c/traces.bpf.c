@@ -7,6 +7,7 @@
 #define MAX_DATA_SIZE 64
 
 struct trace_event_t {
+    __u32 type;
     __u32 pid;
     __u32 tid;
     __u32 saddr;
@@ -15,9 +16,8 @@ struct trace_event_t {
     __u16 dport;
     __u64 start_ts;
     __u64 end_ts;
-    __u32 http_method;
     __u32 status_code;
-    char uri[64];
+    char data[64];
 };
 
 struct {
@@ -31,6 +31,8 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 SEC("tracepoint/syscalls/sys_enter_sendto")
 int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
     char comm[TASK_COMM_LEN];
+
+    struct trace_event_t event = {};
 
     void *buf;
     unsigned int buf_size;
@@ -56,8 +58,15 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
         // Считываем данные из пользовательского пространства
         bpf_probe_read_user(&data, buf_size, buf);
 
+        event.pid = bpf_get_current_pid_tgid() >> 32;
+        event.tid = bpf_get_current_pid_tgid();
+        event.type = 1;
+        event.start_ts = bpf_ktime_get_ns();
+        event.data = data;
+
         // Логируем размер и содержимое данных
         bpf_printk("curl sendto() called: data_len=%d, data=%s\n", buf_size, data);
+        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     }
 
     return 0;
@@ -75,6 +84,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     event.pid = bpf_get_current_pid_tgid() >> 32;
     event.tid = bpf_get_current_pid_tgid();
+    event.type = 2;
     event.start_ts = bpf_ktime_get_ns();
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);

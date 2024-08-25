@@ -12,6 +12,7 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 
 static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 	struct {
+	    __u32 type;
         __u32 pid;
         __u32 tid;
         __u32 saddr;
@@ -30,6 +31,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
     inet_ntop(AF_INET, &e->saddr, saddr_str, INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &e->daddr, daddr_str, INET_ADDRSTRLEN);
 
+    printf("TYPE: %u\n", e->type);
     printf("PID: %u\n", e->pid);
     printf("TID: %u\n", e->tid);
     printf("Source IP: %s\n", saddr_str);
@@ -38,9 +40,8 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
     printf("Destination Port: %u\n", ntohs(e->dport));
     printf("Start Timestamp: %llu\n", e->start_ts);
     printf("End Timestamp: %llu\n", e->end_ts);
-    printf("HTTP Method: %u\n", e->http_method);
     printf("Status Code: %u\n", e->status_code);
-    printf("URI: %s\n", e->uri);
+    printf("DATA: %s\n", e->data);
 }
 
 int main(int argc, char **argv)
