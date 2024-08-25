@@ -12,7 +12,7 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 
 static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
 	struct {
-	    __u32 type;
+        __u32 type;
         __u32 pid;
         __u32 tid;
         __u32 saddr;
@@ -21,9 +21,8 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
         __u16 dport;
         __u64 start_ts;
         __u64 end_ts;
-        __u32 http_method;
         __u32 status_code;
-        char uri[128];
+        char data[64];
 	} *e = data;
 
 	char saddr_str[INET_ADDRSTRLEN];
