@@ -112,7 +112,7 @@ int trace_handle_http_request(struct pt_regs *ctx) {
     struct http_request_t *req = (struct http_request_t *)PT_REGS_PARM1(ctx);
 
     // Извлекаем URL и копируем его в локальную строку
-    bpf_probe_read_user(&url, MAX_URL_SIZE, req->url);
+    bpf_probe_read_user(&url, MAX_DATA_SIZE, req->url);
 
     // Логируем URL
     bpf_printk("Received HTTP request: URL=%s\n", url);
