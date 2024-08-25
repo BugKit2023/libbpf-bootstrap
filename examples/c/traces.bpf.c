@@ -26,6 +26,10 @@ struct {
     __uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
+struct http_request_t {
+    char *url;
+};
+
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_sendto")
@@ -100,34 +104,18 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("tracepoint/syscalls/sys_enter_read")
-int trace_recvfrom(struct trace_event_raw_sys_enter* ctx) {
-    struct trace_event_t event = {};
+SEC("uprobe/handle_http_request")
+int trace_handle_http_request(struct pt_regs *ctx) {
+    char url[MAX_DATA_SIZE] = {};
 
-    void *buf;
-    unsigned int buf_size;
-    char data[MAX_DATA_SIZE] = {};
+    // Получаем указатель на структуру HTTP-запроса
+    struct http_request_t *req = (struct http_request_t *)PT_REGS_PARM1(ctx);
 
-    buf = (void *)ctx->args[1];
-    buf_size = (unsigned int) ctx->args[2];
-    if (buf_size < 0) {
-        return 0;
-    }
-    // Ограничиваем размер буфера, чтобы избежать переполнения
-    if (buf_size > MAX_DATA_SIZE) {
-        buf_size = MAX_DATA_SIZE;
-    }
+    // Извлекаем URL и копируем его в локальную строку
+    bpf_probe_read_user(&url, MAX_URL_SIZE, req->url);
 
-    // Считываем данные из пользовательского пространства
-    bpf_probe_read_user(&event.data, buf_size, buf);
-    event.pid = bpf_get_current_pid_tgid() >> 32;
-    event.tid = bpf_get_current_pid_tgid();
-    event.type = 3;
-    event.start_ts = bpf_ktime_get_ns();
-    // Логируем размер и содержимое данных
-    bpf_printk("curl sys_enter_read() called: data_len=%d, data=%s\n", buf_size, event.data);
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-
+    // Логируем URL
+    bpf_printk("Received HTTP request: URL=%s\n", url);
 
     return 0;
 }
