@@ -62,7 +62,7 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
         event.tid = bpf_get_current_pid_tgid();
         event.type = 1;
         event.start_ts = bpf_ktime_get_ns();
-        event.data = data;
+        __builtin_memcpy(event.data, data, buf_size);
 
         // Логируем размер и содержимое данных
         bpf_printk("curl sendto() called: data_len=%d, data=%s\n", buf_size, data);
