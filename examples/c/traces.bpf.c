@@ -33,7 +33,7 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
     char comm[TASK_COMM_LEN];
 
     void *buf;
-    int buf_size;
+    unsigned int buf_size;
     char data[MAX_DATA_SIZE] = {};
 
     // Получаем имя текущего процесса
@@ -43,8 +43,11 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
     if (comm[0] == 'c' && comm[1] == 'u' && comm[2] == 'r' && comm[3] == 'l' && comm[4] == '\0') {
         // Извлекаем указатель на буфер данных и его размер
         buf = (void *)ctx->args[1];
-        buf_size = (int)ctx->args[2];
+        buf_size = (unsigned int) ctx->args[2];
 
+        if (buf_size < 0) {
+            return 0;
+        }
         // Ограничиваем размер буфера, чтобы избежать переполнения
         if (buf_size > MAX_DATA_SIZE) {
             buf_size = MAX_DATA_SIZE;
