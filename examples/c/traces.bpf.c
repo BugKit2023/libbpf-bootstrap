@@ -77,7 +77,6 @@ SEC("kprobe/tcp_sendmsg")
 int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     struct trace_event_t event = {};
     char comm[16];
-
     bpf_get_current_comm(&comm, sizeof(comm));
 
     if (comm[0] != 'c' || comm[1] != 'u' || comm[2] != 'r' || comm[3] != 'l' || comm[4] != '\0') {
@@ -89,25 +88,35 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.start_ts = bpf_ktime_get_ns();
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+    struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
+    struct iovec iov;
 
-    // Загружаем данные из сокета
-    char data[64];
-    int res = bpf_skb_load_bytes(ctx, 0, data, sizeof(data));
+    // Чтение первого элемента iovec
+    int res = bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
     if (res < 0) {
-        bpf_printk("tcp_sendmsg: Error loading bytes, res=%d\n", res);
+        bpf_printk("tcp_sendmsg: Error reading iovec %d\n", res);
         return 0;
     }
 
-    bpf_printk("tcp_sendmsg: Data content %.20s\n", data);
+    char data[128];
+    int ret = bpf_probe_read_user(data, sizeof(data), iov.iov_base);
+    if (ret < 0) {
+        bpf_printk("tcp_sendmsg: Error reading user data %d\n", ret);
+        return 0;
+    }
 
+    // Парсинг HTTP метода и URI
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
         event.http_method = 1;  // GET
         __builtin_memcpy(event.uri, data + 4, sizeof(event.uri));
     } else if (data[0] == 'P' && data[1] == 'O' && data[2] == 'S' && data[3] == 'T') {
         event.http_method = 2;  // POST
         __builtin_memcpy(event.uri, data + 5, sizeof(event.uri));
+    } else {
+        return 0;  // Если метод не GET и не POST, выходим
     }
 
+    // Чтение адресов и портов
     event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
@@ -117,7 +126,6 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     return 0;
 }
-
 
 SEC("kprobe/tcp_recvmsg")
 int kprobe_tcp_recvmsg(struct pt_regs *ctx) {
