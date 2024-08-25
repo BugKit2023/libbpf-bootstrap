@@ -90,20 +90,21 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iov_iter iter;
-    struct iovec iov;
+    struct iovec *iov;
 
-    BPF_CORE_READ_INTO(&iter, msg, msg_iter);
+    // Получаем указатель на первый элемент массива iovec
+    bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
 
-    if (iter.iov->iov_base == NULL) {
+    if (iov == NULL || iov->iov_base == NULL || iov->iov_len == 0) {
         return 0;
     }
 
     char data[24];
-    bpf_probe_read_user_str(&data, sizeof(data), iter.iov->iov_base);
+    bpf_probe_read_user_str(&data, sizeof(data), iov->iov_base);
 
     bpf_printk("tcp_sendmsg: Parse message\n");
     bpf_printk("Data content: %.20s\n", data);
+
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
         event.http_method = 1;  // GET
         __builtin_memcpy(event.uri, data + 4, sizeof(event.uri));
