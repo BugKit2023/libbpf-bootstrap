@@ -39,7 +39,7 @@ int socket_handler(struct __sk_buff *skb) {
     char line_buffer[7];
 
     bpf_skb_load_bytes(skb, 12, &proto, sizeof(proto));
-    proto = bpf_ntohs(proto);
+    proto = __bpf_ntohs(proto);
     if (proto != 0x0800) // ETH_P_IP
         return 0;
 
