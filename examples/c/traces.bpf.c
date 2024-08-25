@@ -14,7 +14,7 @@ struct trace_event_t {
     __u64 end_ts;
     __u32 http_method;
     __u32 status_code;
-    char uri[128];
+    char uri[24];
 };
 
 struct {
@@ -95,7 +95,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     BPF_CORE_READ_INTO(&iter, msg, msg_iter);
 
-    char data[128];
+    char data[24];
     bpf_probe_read_user_str(&data, sizeof(data), iter.iov->iov_base);
 
     bpf_printk("tcp_sendmsg: Parse message\n");
