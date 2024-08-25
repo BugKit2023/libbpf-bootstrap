@@ -73,11 +73,14 @@ static __always_inline int parse_http_response(struct trace_event_t *event, cons
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-SEC("kprobe/__http_do_proc_request")
+SEC("kprobe/http_parser_execute")
 int kprobe_http_request(struct pt_regs *ctx) {
     struct trace_event_t event = {};
     char method[8];
     char uri[128];
+
+    event.pid = bpf_get_current_pid_tgid() >> 32;
+    event.tid = bpf_get_current_pid_tgid();
 
     // Получаем HTTP метод и URL
     bpf_probe_read_user_str(&method, sizeof(method), (void *)PT_REGS_PARM1(ctx));
