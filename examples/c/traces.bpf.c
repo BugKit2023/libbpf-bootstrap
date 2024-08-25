@@ -14,7 +14,7 @@ struct trace_event_t {
     __u64 end_ts;
     __u32 http_method;
     __u32 status_code;
-    char uri[24];
+    char uri[64];
 };
 
 struct {
@@ -92,18 +92,17 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
     struct iovec iov;
 
-    // Читаем первый элемент iovec из msg->msg_iter.iov
     bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
 
     if (iov.iov_base == NULL || iov.iov_len == 0) {
+        bpf_printk("tcp_sendmsg: Smth went wrong\n");
         return 0;
     }
 
-    char data[24];
-    bpf_probe_read_user_str(&data, sizeof(data), iov.iov_base);
+    char data[64];  // Увеличили буфер
+    int ret = bpf_probe_read_user_str(&data, sizeof(data), iov.iov_base);
 
-    bpf_printk("tcp_sendmsg: Parse message\n");
-    bpf_printk("Data content: %.20s\n", data);
+    bpf_printk("tcp_sendmsg: Data content (ret=%d): %.20s\n", ret, data);
 
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
         event.http_method = 1;  // GET
