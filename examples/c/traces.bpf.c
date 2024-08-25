@@ -2,13 +2,8 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
-#include <bpf/bpf_endian.h>
-#include <linux/if_ether.h>   // Для определения ETH_HLEN
-#include <linux/ip.h>         // Для IP-заголовков
-#include <linux/tcp.h>        // Для TCP-заголовков
 
 #define MAX_BUF_SIZE 64
-#define __bpf_ntohs bpf_ntohs
 
 struct trace_event_t {
     __u32 pid;
@@ -30,13 +25,12 @@ struct {
     __uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("socket")
 int socket_handler(struct __sk_buff *skb) {
     struct trace_event_t event = {};
-    __u32 nhoff = ETH_HLEN;
+    __u32 nhoff = 14;  // Ethernet header length (ETH_HLEN)
     __u16 proto;
     __u8 hdr_len, ip_proto;
     __u32 tcp_hdr_len;
@@ -44,31 +38,34 @@ int socket_handler(struct __sk_buff *skb) {
     __u32 payload_offset, payload_length;
     char line_buffer[7];
 
-    bpf_skb_load_bytes(skb, 12, &proto, 2);
-    proto = __bpf_ntohs(proto);
-    if (proto != ETH_P_IP) return 0;
+    bpf_skb_load_bytes(skb, 12, &proto, sizeof(proto));
+    proto = bpf_ntohs(proto);
+    if (proto != 0x0800) // ETH_P_IP
+        return 0;
 
-    bpf_skb_load_bytes(skb, ETH_HLEN, &hdr_len, sizeof(hdr_len));
-    hdr_len &= 0x0f;
-    hdr_len *= 4;
+    bpf_skb_load_bytes(skb, nhoff, &hdr_len, sizeof(hdr_len));
+    hdr_len = (hdr_len & 0x0F) * 4;
 
-    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, protocol), &ip_proto, 1);
-    if (ip_proto != IPPROTO_TCP) return 0;
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, protocol), &ip_proto, sizeof(ip_proto));
+    if (ip_proto != IPPROTO_TCP)
+        return 0;
 
     tcp_hdr_len = nhoff + hdr_len;
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, tot_len), &tlen, sizeof(tlen));
+    tlen = bpf_ntohs(tlen);
+
     __u8 doff;
-    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, ack_seq) + 4, &doff, sizeof(doff));
-    doff &= 0xf0;
-    doff >>= 4;
+    bpf_skb_load_bytes(skb, tcp_hdr_len + 12, &doff, sizeof(doff)); // Offset to data
+    doff = (doff & 0xF0) >> 4;
     doff *= 4;
 
-    payload_offset = ETH_HLEN + hdr_len + doff;
-    payload_length = __bpf_ntohs(tlen) - hdr_len - doff;
+    payload_offset = nhoff + hdr_len + doff;
+    payload_length = tlen - hdr_len - doff;
 
-    if (payload_length < 7 || payload_offset < 0) return 0;
+    if (payload_length < 7)
+        return 0;
 
-    bpf_skb_load_bytes(skb, payload_offset, line_buffer, 7);
+    bpf_skb_load_bytes(skb, payload_offset, line_buffer, sizeof(line_buffer));
     if (bpf_strncmp(line_buffer, 3, "GET") != 0 &&
         bpf_strncmp(line_buffer, 4, "POST") != 0 &&
         bpf_strncmp(line_buffer, 3, "PUT") != 0 &&
@@ -80,10 +77,10 @@ int socket_handler(struct __sk_buff *skb) {
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
 
-    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, saddr), &event.saddr, 4);
-    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, daddr), &event.daddr, 4);
-    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, source), &event.sport, 2);
-    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, dest), &event.dport, 2);
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, saddr), &event.saddr, sizeof(event.saddr));
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, daddr), &event.daddr, sizeof(event.daddr));
+    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, source), &event.sport, sizeof(event.sport));
+    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, dest), &event.dport, sizeof(event.dport));
 
     if (bpf_strncmp(line_buffer, 3, "GET") == 0) {
         event.http_method = 1;
@@ -96,4 +93,3 @@ int socket_handler(struct __sk_buff *skb) {
     bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     return 0;
 }
-
