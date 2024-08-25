@@ -92,17 +92,20 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
     struct iovec iov;
 
-    bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
+    int res = bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
+    bpf_printk("tcp_sendmsg: Kelner data, ret=%d\n", res);
 
     if (iov.iov_base == NULL || iov.iov_len == 0) {
-        bpf_printk("tcp_sendmsg: Smth went wrong\n");
+        bpf_printk("tcp_sendmsg: iov is invalid\n");
         return 0;
     }
 
     char data[64];  // Увеличили буфер
-    int ret = bpf_probe_read_user_str(&data, sizeof(data), iov.iov_base);
+    int ret = bpf_probe_read_user(&data, sizeof(data) - 1, iov.iov_base);
+    bpf_printk("tcp_sendmsg: User data, ret=%d\n", ret);
 
-    bpf_printk("tcp_sendmsg: Data content (ret=%d): %.20s\n", ret, data);
+    bpf_printk("tcp_sendmsg: Data content %.20s\n", data);
+
 
     if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T' && data[3] == ' ') {
         event.http_method = 1;  // GET
