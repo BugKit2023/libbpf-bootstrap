@@ -33,9 +33,13 @@ int socket_handler(struct __sk_buff *skb) {
     __u32 payload_offset, payload_length;
     char line_buffer[7];
 
+    // Log entry point
+    bpf_printk("Entering socket_handler\n");
+
     // Load Ethernet protocol
     bpf_skb_load_bytes(skb, 12, &proto, sizeof(proto));
     proto = bpf_ntohs(proto);
+    bpf_printk("Protocol: 0x%x\n", proto);
     if (proto != 0x0800) // ETH_P_IP
         return 0;
 
@@ -45,6 +49,7 @@ int socket_handler(struct __sk_buff *skb) {
 
     // Load protocol type
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, protocol), &ip_proto, sizeof(ip_proto));
+    bpf_printk("IP Protocol: %d\n", ip_proto);
     if (ip_proto != IPPROTO_TCP)
         return 0;
 
@@ -52,6 +57,7 @@ int socket_handler(struct __sk_buff *skb) {
     tcp_hdr_len = nhoff + hdr_len;
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, tot_len), &tlen, sizeof(tlen));
     tlen = bpf_ntohs(tlen);
+    bpf_printk("Total length: %d\n", tlen);
 
     __u8 doff;
     bpf_skb_load_bytes(skb, tcp_hdr_len + 12, &doff, sizeof(doff)); // Offset to data
@@ -61,10 +67,13 @@ int socket_handler(struct __sk_buff *skb) {
     payload_offset = nhoff + hdr_len + doff;
     payload_length = tlen - hdr_len - doff;
 
+    bpf_printk("Payload offset: %d, Payload length: %d\n", payload_offset, payload_length);
+
     if (payload_length < 7)
         return 0;
 
     bpf_skb_load_bytes(skb, payload_offset, line_buffer, sizeof(line_buffer));
+    bpf_printk("First few bytes of payload: %s\n", line_buffer);
 
     if (line_buffer[0] == 'G' && line_buffer[1] == 'E' && line_buffer[2] == 'T') {
         bpf_skb_load_bytes(skb, payload_offset + 4, event.uri, MAX_BUF_SIZE);
@@ -74,11 +83,16 @@ int socket_handler(struct __sk_buff *skb) {
         return 0;
     }
 
+    bpf_printk("Captured URI: %s\n", event.uri);
+
     // Load IP addresses and ports
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, saddr), &event.saddr, sizeof(event.saddr));
     bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, daddr), &event.daddr, sizeof(event.daddr));
     bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, source), &event.sport, sizeof(event.sport));
     bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, dest), &event.dport, sizeof(event.dport));
+
+    bpf_printk("Source IP: %x, Destination IP: %x\n", event.saddr, event.daddr);
+    bpf_printk("Source Port: %d, Destination Port: %d\n", event.sport, event.dport);
 
     // Submit event
     bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
