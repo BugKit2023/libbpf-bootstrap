@@ -23,76 +23,49 @@ struct {
     __uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-static __always_inline int parse_http_request(struct trace_event_t *event, const char *data, int data_len) {
-    bpf_printk("Parsing HTTP request, data length: %d\n", data_len);
-    bpf_printk("Data content: %.20s\n", data);
-
-    if (data_len < 4)
-        return 0;
-
-    if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T') {
-        event->http_method = 1;  // GET
-        bpf_printk("GET request detected\n");
-    } else if (data[0] == 'P' && data[1] == 'O' && data[2] == 'S' && data[3] == 'T') {
-        event->http_method = 2;  // POST
-        bpf_printk("POST request detected\n");
-    } else {
-        bpf_printk("Unknown method or not HTTP request\n");
-        return 0;  // Not GET or POST
-    }
-
-    int i = 4;
-    int uri_index = 0;
-    while (i < data_len && data[i] != ' ' && uri_index < sizeof(event->uri) - 1) {
-        event->uri[uri_index++] = data[i++];
-    }
-    event->uri[uri_index] = '\0';
-
-    bpf_printk("Parsed URI: %s\n", event->uri);
-
-    return 1;
-}
-
-static __always_inline int parse_http_response(struct trace_event_t *event, const char *data, int data_len) {
-    if (data_len < 12)
-        return 0;
-
-    // Assume status code is in the format "HTTP/1.1 XXX"
-    if (data[9] == '2' && data[10] == '0' && data[11] == '0') {
-        event->status_code = 200;
-    } else if (data[9] == '4' && data[10] == '0' && data[11] == '4') {
-        event->status_code = 404;
-    } else if (data[9] == '5' && data[10] == '0' && data[11] == '0') {
-        event->status_code = 500;
-    } else {
-        return 0;  // Not a recognized status code
-    }
-
-    return 1;
-}
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-SEC("tracepoint/syscalls/sys_enter_sendmsg")
-int trace_http_request(struct trace_event_raw_sys_enter *ctx) {
-    char data[64];
-    __builtin_memset(data, 0, sizeof(data)); // Инициализация массива нулями
-    bpf_probe_read_user(data, sizeof(data) - 1, (void *)ctx->args[1]);
-
-    bpf_printk("START HTTP Request: %s\n", data);
-    if (data[0] == 'G' || data[0] == 'P') {
-        bpf_printk("HTTP Request: %s\n", data);
-    }
-
-    return 0;
-}
-SEC("kprobe/tcp_sendmsg")
-int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
+SEC("socket")
+int socket_handler(struct __sk_buff *skb) {
     struct trace_event_t event = {};
-    char comm[16];
-    bpf_get_current_comm(&comm, sizeof(comm));
+    __u32 nhoff = ETH_HLEN;
+    __u16 proto;
+    __u8 hdr_len, ip_proto;
+    __u32 tcp_hdr_len;
+    __u16 tlen;
+    __u32 payload_offset, payload_length;
+    char line_buffer[7];
 
-    if (comm[0] != 'c' || comm[1] != 'u' || comm[2] != 'r' || comm[3] != 'l' || comm[4] != '\0') {
+    bpf_skb_load_bytes(skb, 12, &proto, 2);
+    proto = __bpf_ntohs(proto);
+    if (proto != ETH_P_IP) return 0;
+
+    bpf_skb_load_bytes(skb, ETH_HLEN, &hdr_len, sizeof(hdr_len));
+    hdr_len &= 0x0f;
+    hdr_len *= 4;
+
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, protocol), &ip_proto, 1);
+    if (ip_proto != IPPROTO_TCP) return 0;
+
+    tcp_hdr_len = nhoff + hdr_len;
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, tot_len), &tlen, sizeof(tlen));
+    __u8 doff;
+    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, ack_seq) + 4, &doff, sizeof(doff));
+    doff &= 0xf0;
+    doff >>= 4;
+    doff *= 4;
+
+    payload_offset = ETH_HLEN + hdr_len + doff;
+    payload_length = __bpf_ntohs(tlen) - hdr_len - doff;
+
+    if (payload_length < 7 || payload_offset < 0) return 0;
+
+    bpf_skb_load_bytes(skb, payload_offset, line_buffer, 7);
+    if (bpf_strncmp(line_buffer, 3, "GET") != 0 &&
+        bpf_strncmp(line_buffer, 4, "POST") != 0 &&
+        bpf_strncmp(line_buffer, 3, "PUT") != 0 &&
+        bpf_strncmp(line_buffer, 6, "DELETE") != 0) {
         return 0;
     }
 
@@ -100,49 +73,20 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.tid = bpf_get_current_pid_tgid();
     event.start_ts = bpf_ktime_get_ns();
 
-    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, saddr), &event.saddr, 4);
+    bpf_skb_load_bytes(skb, nhoff + offsetof(struct iphdr, daddr), &event.daddr, 4);
+    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, source), &event.sport, 2);
+    bpf_skb_load_bytes(skb, tcp_hdr_len + offsetof(struct tcphdr, dest), &event.dport, 2);
 
-    // Чтение адресов и портов
-    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
-    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-    event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
+    if (bpf_strncmp(line_buffer, 3, "GET") == 0) {
+        event.http_method = 1;
+    } else if (bpf_strncmp(line_buffer, 4, "POST") == 0) {
+        event.http_method = 2;
+    }
 
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+    bpf_skb_load_bytes(skb, payload_offset + 4, event.uri, MAX_BUF_SIZE);
 
+    bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     return 0;
 }
 
-SEC("kprobe/tcp_recvmsg")
-int kprobe_tcp_recvmsg(struct pt_regs *ctx) {
-    struct trace_event_t event = {};
-
-    event.pid = bpf_get_current_pid_tgid() >> 32;
-    event.tid = bpf_get_current_pid_tgid();
-    event.end_ts = bpf_ktime_get_ns();
-
-    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
-    struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iov_iter iter;
-    struct iovec iov;
-
-    BPF_CORE_READ_INTO(&iter, msg, msg_iter);
-    BPF_CORE_READ_INTO(&iov, &iter, iov);
-
-    char data[128];
-    bpf_probe_read_user(&data, sizeof(data), iov.iov_base);
-
-    if (!parse_http_response(&event, data, iov.iov_len))
-        return 0;
-
-    // Получение IP-адресов и портов
-    event.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
-    event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-    event.dport = __builtin_bswap16(BPF_CORE_READ(sk, __sk_common.skc_dport));
-
-    // Отправка события в пространство пользователя
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-
-    return 0;
-}
