@@ -76,7 +76,8 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 SEC("tracepoint/syscalls/sys_enter_sendmsg")
 int trace_http_request(struct trace_event_raw_sys_enter *ctx) {
     char data[64];
-    bpf_probe_read_user_str(&data, sizeof(data), (void *)ctx->args[1]);
+    __builtin_memset(data, 0, sizeof(data)); // Инициализация массива нулями
+    bpf_probe_read_user(data, sizeof(data) - 1, (void *)ctx->args[1]);
 
     bpf_printk("START HTTP Request: %s\n", data);
     if (data[0] == 'G' || data[0] == 'P') {
@@ -85,7 +86,6 @@ int trace_http_request(struct trace_event_raw_sys_enter *ctx) {
 
     return 0;
 }
-
 SEC("kprobe/tcp_sendmsg")
 int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     struct trace_event_t event = {};
