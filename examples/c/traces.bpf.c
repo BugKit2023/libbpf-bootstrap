@@ -101,7 +101,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 }
 
 SEC("tracepoint/syscalls/sys_enter_recvfrom")
-int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
+int trace_recvfrom(struct trace_event_raw_sys_enter* ctx) {
     struct trace_event_t event = {};
 
     void *buf;
