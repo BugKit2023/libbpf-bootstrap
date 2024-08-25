@@ -30,7 +30,16 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("tracepoint/syscalls/sys_enter_sendto")
 int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
-    bpf_printk("sendto() called\n");
+    char comm[TASK_COMM_LEN];
+
+    // Получаем имя текущего процесса
+    bpf_get_current_comm(&comm, sizeof(comm));
+
+    // Проверяем, что процесс называется "curl"
+    if (comm[0] == 'c' && comm[1] == 'u' && comm[2] == 'r' && comm[3] == 'l' && comm[4] == '\0') {
+        bpf_printk("sendto() called by CURL\n");
+    }
+
     return 0;
 }
 
