@@ -99,3 +99,32 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
 
     return 0;
 }
+
+SEC("kprobe/tcp_recvmsg")
+int trace_tcp_recvmsg(struct pt_regs *ctx) {
+    struct trace_event_t event = {};
+
+    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+    struct inet_sock *inet = inet_sk(sk);
+
+    // Извлекаем IP-адреса и порты
+    event.saddr = inet->inet_saddr;
+    event.daddr = inet->inet_daddr;
+    event.sport = ntohs(inet->inet_sport);
+    event.dport = ntohs(inet->inet_dport);
+
+    // Получаем PID и TID
+    event.pid = bpf_get_current_pid_tgid() >> 32;
+    event.tid = bpf_get_current_pid_tgid();
+
+    // Записываем тип события (1 для отправки, 2 для получения)
+    event.type = 3;
+
+    // Получаем текущий временной штамп
+    event.start_ts = bpf_ktime_get_ns();
+
+    // Отправляем событие в perf buffer
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+
+    return 0;
+}
