@@ -4,7 +4,7 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_endian.h>
 
-#define MAX_BUF_SIZE 64
+#define MAX_DATA_SIZE 64
 
 struct trace_event_t {
     __u32 pid;
@@ -32,12 +32,29 @@ SEC("tracepoint/syscalls/sys_enter_sendto")
 int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
     char comm[TASK_COMM_LEN];
 
+    void *buf;
+    int buf_size;
+    char data[MAX_DATA_SIZE] = {};
+
     // Получаем имя текущего процесса
     bpf_get_current_comm(&comm, sizeof(comm));
 
     // Проверяем, что процесс называется "curl"
     if (comm[0] == 'c' && comm[1] == 'u' && comm[2] == 'r' && comm[3] == 'l' && comm[4] == '\0') {
-        bpf_printk("sendto() called by CURL\n");
+        // Извлекаем указатель на буфер данных и его размер
+        buf = (void *)ctx->args[1];
+        buf_size = (int)ctx->args[2];
+
+        // Ограничиваем размер буфера, чтобы избежать переполнения
+        if (buf_size > MAX_DATA_SIZE) {
+            buf_size = MAX_DATA_SIZE;
+        }
+
+        // Считываем данные из пользовательского пространства
+        bpf_probe_read_user(&data, buf_size, buf);
+
+        // Логируем размер и содержимое данных
+        bpf_printk("curl sendto() called: data_len=%d, data=%s\n", buf_size, data);
     }
 
     return 0;
