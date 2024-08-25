@@ -2,6 +2,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <bpf/bpf_endian.h>
 
 #define MAX_BUF_SIZE 64
 
@@ -39,7 +40,7 @@ int socket_handler(struct __sk_buff *skb) {
     char line_buffer[7];
 
     bpf_skb_load_bytes(skb, 12, &proto, sizeof(proto));
-    proto = __bpf_ntohs(proto);
+    proto = bpf_ntohs(proto);
     if (proto != 0x0800) // ETH_P_IP
         return 0;
 
