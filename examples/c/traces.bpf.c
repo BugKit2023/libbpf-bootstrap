@@ -56,16 +56,16 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
         }
 
         // Считываем данные из пользовательского пространства
-        bpf_probe_read_user(&data, buf_size, buf);
+        bpf_probe_read_user(&event.data, buf_size, buf);
 
         event.pid = bpf_get_current_pid_tgid() >> 32;
         event.tid = bpf_get_current_pid_tgid();
         event.type = 1;
         event.start_ts = bpf_ktime_get_ns();
-        __builtin_memcpy(event.data, data, buf_size);
+        //__builtin_memcpy(event.data, data, buf_size);
 
         // Логируем размер и содержимое данных
-        bpf_printk("curl sendto() called: data_len=%d, data=%s\n", buf_size, data);
+        bpf_printk("curl sendto() called: data_len=%d, data=%s\n", buf_size, event.data);
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     }
 
