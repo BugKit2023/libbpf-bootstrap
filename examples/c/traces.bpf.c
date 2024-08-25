@@ -89,20 +89,14 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.start_ts = bpf_ktime_get_ns();
 
     struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
-    struct msghdr *msg = (struct msghdr *)PT_REGS_PARM2(ctx);
-    struct iovec iov;
 
-    int res = bpf_probe_read_kernel(&iov, sizeof(iov), &msg->msg_iter.iov);
-    bpf_printk("tcp_sendmsg: Kelner data, ret=%d\n", res);
-
-    if (iov.iov_base == NULL || iov.iov_len == 0) {
-        bpf_printk("tcp_sendmsg: iov is invalid\n");
+    // Загружаем данные из сокета
+    char data[64];
+    int res = bpf_skb_load_bytes(ctx, 0, data, sizeof(data));
+    if (res < 0) {
+        bpf_printk("tcp_sendmsg: Error loading bytes, res=%d\n", res);
         return 0;
     }
-
-    char data[64];  // Увеличили буфер
-    int ret = bpf_probe_read_user_str(&data, sizeof(data), iov.iov_base);
-    bpf_printk("tcp_sendmsg: User data, ret=%d\n", ret);
 
     bpf_printk("tcp_sendmsg: Data content %.20s\n", data);
 
@@ -118,8 +112,6 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
     event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
-
-    bpf_printk("tcp_sendmsg: Send message\n");
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
