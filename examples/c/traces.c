@@ -32,7 +32,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
     inet_ntop(AF_INET, &e->daddr, daddr_str, INET_ADDRSTRLEN);
 
     printf("TYPE: %u\n", e->type);
-    if (e->type != 1 || strstr(e->data, "HTTP") != NULL) {
+    if ((e->type != 1 || strstr(e->data, "HTTP") != NULL) && (ntohs(e->dport) == 8080 || ntohs(e->dport) == 8081 || ntohs(e->dport) == 8082)) {
         printf("PID: %u\n", e->pid);
         printf("TID: %u\n", e->tid);
         printf("Source IP: %s\n", saddr_str);
