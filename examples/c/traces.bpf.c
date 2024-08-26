@@ -104,32 +104,6 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("tracepoint/syscalls/sys_enter_recvfrom")
-int trace_recvfrom(struct trace_event_raw_sys_enter *ctx) {
-    char data[MAX_DATA_SIZE] = {};
-
-    // Получаем указатель на буфер данных
-    void *buf = (void *)ctx->args[1];
-    unsigned int buf_size = (unsigned int) ctx->args[2];
-
-    // Ограничиваем размер данных для копирования, чтобы избежать переполнения буфера
-    if (buf_size > MAX_DATA_SIZE) {
-        buf_size = MAX_DATA_SIZE;
-    }
-
-    // Читаем данные из пользовательского пространства
-    bpf_probe_read_user(&data, buf_size, buf);
-    bpf_printk("Detected HTTP request: %s\n", data);
-
-    // Пример простейшей фильтрации HTTP GET-запроса
-    if (data[0] == 'G' && data[1] == 'E' && data[2] == 'T') {
-        bpf_printk("Detected HTTP GET request: %s\n", data);
-        // Логика для извлечения URL из строки data
-    }
-
-    return 0;
-}
-
 SEC("kprobe/tcp_recvmsg")
 int trace_tcp_recvmsg(struct pt_regs *ctx) {
     struct trace_event_t event = {};
