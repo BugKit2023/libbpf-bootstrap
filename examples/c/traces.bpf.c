@@ -122,6 +122,7 @@ int kprobe_tcp_sendmsg(struct pt_regs *ctx) {
     event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
 
     bpf_printk("PORT: %u\n", event.dport);
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     if (event.dport == 8080 || event.dport == 8081 || event.dport == 8082) {
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     }
