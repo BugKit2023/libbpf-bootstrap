@@ -43,7 +43,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
       //  printf("End Timestamp: %llu\n", e->end_ts);
       //  printf("Status Code: %u\n", e->status_code);
         printf("Data: %s\n", e->data);
-        printf("........................................................................................................");
+        printf("........................................................................................................\n");
     }
 }
 
