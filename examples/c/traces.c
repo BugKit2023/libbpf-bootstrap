@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/resource.h>
 #include <bpf/libbpf.h>
@@ -30,17 +31,19 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size) {
     inet_ntop(AF_INET, &e->saddr, saddr_str, INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &e->daddr, daddr_str, INET_ADDRSTRLEN);
 
-    printf("TYPE: %u\n", e->type);
-    printf("PID: %u\n", e->pid);
-    printf("TID: %u\n", e->tid);
-    printf("Source IP: %s\n", saddr_str);
-    printf("Destination IP: %s\n", daddr_str);
-    printf("Source Port: %u\n", ntohs(e->sport));
-    printf("Destination Port: %u\n", ntohs(e->dport));
-    printf("Start Timestamp: %llu\n", e->start_ts);
-    printf("End Timestamp: %llu\n", e->end_ts);
-    printf("Status Code: %u\n", e->status_code);
-    printf("DATA: %s\n", e->data);
+    if (e->type != 1 || strstr(e->data, "HTTP") != NULL) {
+        printf("TYPE: %u\n", e->type);
+        printf("PID: %u\n", e->pid);
+        printf("TID: %u\n", e->tid);
+        printf("Source IP: %s\n", saddr_str);
+        printf("Destination IP: %s\n", daddr_str);
+        printf("Source Port: %u\n", ntohs(e->sport));
+        printf("Destination Port: %u\n", ntohs(e->dport));
+        printf("Start Timestamp: %llu\n", e->start_ts);
+        printf("End Timestamp: %llu\n", e->end_ts);
+        printf("Status Code: %u\n", e->status_code);
+        printf("DATA: %s\n", e->data);
+    }
 }
 
 int main(int argc, char **argv)

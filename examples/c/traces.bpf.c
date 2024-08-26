@@ -71,7 +71,6 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
 //        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 //    }
 
-    if (strstr(event.data, "HTTP") != NULL) {
         buf = (void *)ctx->args[1];
         buf_size = (unsigned int) ctx->args[2];
 
@@ -95,7 +94,6 @@ int trace_sendto(struct trace_event_raw_sys_enter* ctx) {
         // Логируем размер и содержимое данных
         bpf_printk("curl sendto() called: data_len=%d, data=%s\n", buf_size, event.data);
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-    }
 
     return 0;
 }
